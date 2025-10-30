@@ -9,6 +9,7 @@ import (
     mautrix "maunium.net/go/mautrix"
     "maunium.net/go/mautrix/format"
     "maunium.net/go/mautrix/id"
+    "maunium.net/go/mautrix/event"
 )
 
 // Client is a minimal Matrix client wrapper for sending messages into a single room.
@@ -77,6 +78,23 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
     if err != nil {
         return fmt.Errorf("send image message: %w", err)
     }
+    return nil
+}
+
+// StartMessageListener starts a background sync and invokes onMessage for message events.
+func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)) error {
+    syncer := c.mxClient.Sync()
+    syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
+        if evt == nil || evt.Content.Parsed == nil {
+            return
+        }
+        msg, ok := evt.Content.Parsed.(*event.MessageEventContent)
+        if !ok {
+            return
+        }
+        onMessage(context.Background(), msg, evt.RoomID, evt.Sender)
+    })
+    go func() { _ = syncer.SyncWithContext(ctx) }()
     return nil
 }
 

@@ -1,0 +1,12 @@
+data/
+*.db
+*.log
+.DS_Store
+.git/
+.gitignore
+*.md
+docker-compose.yml
+Dockerfile
+.vscode/
+.idea/
+

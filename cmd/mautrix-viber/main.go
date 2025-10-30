@@ -4,6 +4,7 @@ import (
 	"fmt"
     "log"
 	"net/http"
+    "context"
     "os"
     "os/signal"
     "syscall"
@@ -12,6 +13,7 @@ import (
     "github.com/example/mautrix-viber/internal/config"
     imatrix "github.com/example/mautrix-viber/internal/matrix"
 	"github.com/example/mautrix-viber/internal/viber"
+    "github.com/example/mautrix-viber/internal/api"
     "github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -47,10 +49,27 @@ func main() {
 		log.Fatalf("failed to ensure webhook: %v", err)
 	}
 
+    // If Matrix is configured, start listener to forward Matrix -> Viber
+    if mxClient != nil && env.ViberDefaultReceiverID != "" {
+        if err := mxClient.StartMessageListener(context.Background(), func(ctx context.Context, msg *imatrix.EventMessageEventContent, roomID imatrix.id.RoomID, sender imatrix.id.UserID) {
+            // Forward plain text messages to a default Viber receiver for demo purposes
+            if msg.MsgType == imatrix.event.MsgText || msg.MsgType == imatrix.event.MsgNotice {
+                // best-effort: include sender localpart
+                text := msg.Body
+                if text != "" {
+                    _, _ = v.SendText(ctx, env.ViberDefaultReceiverID, text)
+                }
+            }
+        }); err != nil {
+            log.Printf("matrix listener error: %v", err)
+        }
+    }
+
     mux := http.NewServeMux()
     mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
     mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
     mux.Handle("/metrics", promhttp.Handler())
+    mux.HandleFunc("/api/info", api.InfoHandler)
     mux.HandleFunc("/viber/webhook", v.WebhookHandler)
 
     srv := &http.Server{
@@ -73,7 +92,7 @@ func main() {
     stop := make(chan os.Signal, 1)
     signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
     <-stop
-    shutdownCtx, cancel := time.WithTimeout(time.Background(), 15*time.Second)
+    shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
     defer cancel()
     if err := srv.Shutdown(shutdownCtx); err != nil {
         log.Printf("graceful shutdown failed: %v", err)

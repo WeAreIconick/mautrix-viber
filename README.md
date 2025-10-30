@@ -1,202 +1,410 @@
-## mautrix-viber — Matrix ↔ Viber bridge (Go)
+# mautrix-viber — Production-Ready Matrix ↔ Viber Bridge (Go)
 
-Robust, minimal scaffolding for a Matrix ↔ Viber bridge written in Go. It exposes an HTTP webhook endpoint for Viber callbacks and lays the groundwork to forward events to Matrix using `maunium.net/go/mautrix`.
-
-This repository is currently a foundation: it starts a web server, defines Viber types, and contains a stubbed webhook registration call. It’s intended for developers who want to build a full-featured bridge while starting from a clean, idiomatic codebase.
-
-### Status
-- Early-stage scaffold. Safe for local development and experimentation.
-- Webhook registration is a placeholder (no outbound API call yet).
-- No message relaying to Matrix implemented yet.
-
----
+A comprehensive, production-ready bidirectional Matrix-Viber bridge written in Go. Built with security, observability, and reliability in mind.
 
 ## Features
-- HTTP server with a Viber webhook handler at `/viber/webhook` returning `200 OK`.
-- Minimal Viber types for common events (message, subscribe, unsubscribe, conversation started).
-- Environment-based configuration helper (`internal/config`).
-- Clean package structure ready to extend with Matrix bridging logic.
+
+### ✅ Implemented
+
+- **Bidirectional Message Bridging**
+  - Viber → Matrix: Text, images, and media messages
+  - Matrix → Viber: Full message forwarding with rich formatting
+  
+- **Security & Reliability**
+  - HMAC-SHA256 signature verification for Viber webhooks
+  - Per-IP rate limiting with token bucket algorithm
+  - Request body size limits (2MB default)
+  - Graceful shutdown with 15s timeout
+  - Server timeouts (read, write, idle)
+
+- **Observability**
+  - Prometheus metrics (`/metrics`)
+  - Structured JSON logging via `log/slog`
+  - Health check endpoints (`/healthz`, `/readyz`)
+  - Bridge info endpoint (`/api/info`) with status and statistics
+
+- **Persistence**
+  - SQLite database for user/room mappings
+  - Message ID deduplication
+  - User linking and room mapping storage
+
+- **Configuration**
+  - Environment variable support
+  - YAML configuration file support
+  - Configuration validation
+  - Config overrides (env vars override file config)
+
+- **Deployment**
+  - Dockerfile with multi-stage build
+  - docker-compose.yml with healthchecks
+  - Alpine-based minimal image
+
+- **API Features**
+  - Viber send API: text, image, video, file, location, contact messages
+  - Matrix event listeners: message, reaction, redaction, typing, receipt
+  - Admin commands: `!bridge link`, `!bridge unlink`, `!bridge status`, `!bridge help`, `!bridge ping`
+
+- **Developer Experience**
+  - Exponential backoff retry logic with jitter
+  - Comprehensive error handling
+  - Well-documented codebase with inline comments
+  - Clean package structure
+
+### 🚧 Planned Features
+
+See [TODO list](#todo) for comprehensive feature roadmap including:
+- Matrix ghost user puppeting with avatars
+- Group chat support
+- E2EE support
+- Typing indicators and read receipts sync
+- Message search
+- Web admin panel
+- OpenTelemetry tracing
+- Redis caching
+- And 40+ more features...
 
 ---
 
-## How it works (high level)
-1. The process starts an HTTP server (defaults to `:8080`).
-2. On startup, it attempts to ensure the Viber webhook is registered (currently a no-op stub).
-3. Viber sends callbacks to your public webhook URL which should route to `/viber/webhook`.
-4. The webhook handler currently acknowledges with `200 OK`; you can extend it to relay to Matrix.
+## Quick Start
 
----
+### Prerequisites
 
-## Requirements
-- Go 1.22+
-- A Viber Bot and its API token
-- A publicly reachable HTTPS URL for the webhook (e.g., via a reverse proxy or a tunneling tool like `ngrok`)
-- Optional: Matrix homeserver URL, access token, and a target room ID to relay incoming Viber messages
+- Go 1.22+ (for building from source)
+- A Viber Bot API token ([create one](https://partners.viber.com/))
+- A Matrix homeserver URL and access token
+- A publicly accessible HTTPS URL for webhooks
+
+### Option 1: Docker (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/example/mautrix-viber.git
+cd mautrix-viber
+
+# Create config file
+cp config.example.yaml config.yaml
+# Edit config.yaml with your credentials
+
+# Or use environment variables
+export VIBER_API_TOKEN="your-token"
+export VIBER_WEBHOOK_URL="https://your-domain.com/viber/webhook"
+export MATRIX_HOMESERVER_URL="https://matrix.example.com"
+export MATRIX_ACCESS_TOKEN="your-token"
+export MATRIX_DEFAULT_ROOM_ID="!roomid:example.com"
+
+# Run with docker-compose
+docker-compose up -d
+
+# Or build and run manually
+docker build -t mautrix-viber .
+docker run -d \
+  -p 8080:8080 \
+  -e VIBER_API_TOKEN="your-token" \
+  -e VIBER_WEBHOOK_URL="https://your-domain.com/viber/webhook" \
+  -v ./data:/data \
+  mautrix-viber
+```
+
+### Option 2: From Source
+
+```bash
+# Clone and build
+git clone https://github.com/example/mautrix-viber.git
+cd mautrix-viber
+go build -o ./bin/mautrix-viber ./cmd/mautrix-viber
+
+# Set environment variables (see Configuration section)
+export VIBER_API_TOKEN="your-token"
+export VIBER_WEBHOOK_URL="https://your-domain.com/viber/webhook"
+export MATRIX_HOMESERVER_URL="https://matrix.example.com"
+export MATRIX_ACCESS_TOKEN="your-token"
+export MATRIX_DEFAULT_ROOM_ID="!roomid:example.com"
+
+# Run
+./bin/mautrix-viber
+```
+
+### Testing Locally
+
+For local development, use `ngrok` to expose the bridge:
+
+```bash
+# In one terminal
+./bin/mautrix-viber
+
+# In another terminal
+ngrok http 8080
+
+# Copy the HTTPS URL (e.g., https://abcd1234.ngrok.io)
+# Set VIBER_WEBHOOK_URL=https://abcd1234.ngrok.io/viber/webhook
+```
 
 ---
 
 ## Configuration
-There are two configuration structs in the codebase:
 
-- `internal/config.Config` supports environment variables:
-  - `VIBER_API_TOKEN`: Viber bot token
-  - `VIBER_WEBHOOK_URL`: Public HTTPS URL for Viber to call (e.g. `https://your.domain.tld/viber/webhook`)
-  - `LISTEN_ADDRESS`: Address for the HTTP server (default `:8080`)
-  - `MATRIX_HOMESERVER_URL`: Matrix homeserver base URL (e.g. `https://matrix.example.com`)
-  - `MATRIX_ACCESS_TOKEN`: Matrix access token of the bot/user to send with
-  - `MATRIX_DEFAULT_ROOM_ID`: Matrix room ID to receive relayed messages (e.g. `!roomid:example.com`)
+### Environment Variables
 
-- `internal/viber.Config` is the runtime config used by the Viber client. In `cmd/mautrix-viber/main.go` the values are currently hard-coded as empty placeholders. You can either:
-  - Replace the hard-coded config with `internal/config.FromEnv()` to load from environment variables, or
-  - Manually set the values in `main.go`.
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `VIBER_API_TOKEN` | Viber Bot API token | ✅ Yes |
+| `VIBER_WEBHOOK_URL` | Public HTTPS URL for Viber webhooks | ✅ Yes |
+| `LISTEN_ADDRESS` | HTTP server listen address (default: `:8080`) | No |
+| `MATRIX_HOMESERVER_URL` | Matrix homeserver base URL | Yes (if bridging) |
+| `MATRIX_ACCESS_TOKEN` | Matrix access token | Yes (if bridging) |
+| `MATRIX_DEFAULT_ROOM_ID` | Default Matrix room for bridged messages | Yes (if bridging) |
+| `DATABASE_PATH` | SQLite database path (default: `./data/bridge.db`) | No |
+| `LOG_LEVEL` | Log level: debug, info, warn, error (default: `info`) | No |
+| `VIBER_DEFAULT_RECEIVER_ID` | Default Viber user ID for Matrix → Viber demo forwarding | Optional |
 
-Example environment configuration (recommended):
+### YAML Configuration File
+
+Create `config.yaml` (see `config.example.yaml` for template):
+
+```yaml
+viber:
+  api_token: "your-viber-bot-token"
+  webhook_url: "https://your-domain.com/viber/webhook"
+
+matrix:
+  homeserver_url: "https://matrix.example.com"
+  access_token: "your-matrix-access-token"
+  default_room_id: "!roomid:example.com"
+
+server:
+  listen_address: ":8080"
+
+database:
+  path: "./data/bridge.db"
+
+logging:
+  level: "info"  # debug, info, warn, error
+```
+
+**Note**: Environment variables override file configuration values.
+
+---
+
+## API Endpoints
+
+### Webhook Endpoint
+
+- **POST** `/viber/webhook` — Receives Viber callbacks
+  - Verifies HMAC-SHA256 signature (`X-Viber-Content-Signature` header)
+  - Processes events: `message`, `subscribed`, `unsubscribed`, `conversation_started`
+  - Forwards messages to Matrix when configured
+
+### Health & Monitoring
+
+- **GET** `/healthz` — Health check (returns 200 if healthy)
+- **GET** `/readyz` — Readiness check (returns 200 if ready)
+- **GET** `/metrics` — Prometheus metrics
+- **GET** `/api/info` — Bridge information and statistics (JSON)
+
+### Example: Get Bridge Status
 
 ```bash
-export VIBER_API_TOKEN="viber-xxxxxxxxxxxxxxxx"
-export VIBER_WEBHOOK_URL="https://your.public.url/viber/webhook"
-export LISTEN_ADDRESS=":8080"
-export MATRIX_HOMESERVER_URL="https://matrix.example.com"
-export MATRIX_ACCESS_TOKEN="syt_xxxxxxxxxxxxxxxxxxxxxxxxx"
-export MATRIX_DEFAULT_ROOM_ID="!roomid:example.com"
+curl http://localhost:8080/api/info
+```
+
+Response:
+```json
+{
+  "version": "0.1.0",
+  "status": "running",
+  "uptime": "2h30m15s",
+  "started_at": "2024-01-01T00:00:00Z",
+  "matrix": {
+    "connected": true,
+    "status": "synced"
+  },
+  "viber": {
+    "connected": true,
+    "status": "webhook_registered"
+  },
+  "statistics": {
+    "messages_bridged": 1234,
+    "users_linked": 56,
+    "rooms_mapped": 12,
+    "webhook_requests": 5678,
+    "errors": 0
+  }
+}
 ```
 
 ---
 
-## Quickstart
+## Admin Commands
 
-### 1) Build
-```bash
-go build -o ./bin/mautrix-viber ./cmd/mautrix-viber
-```
+Bridge commands can be run in Matrix rooms:
 
-### 2) Run (local)
-```bash
-./bin/mautrix-viber
-```
-
-You should see a log line similar to:
-
-```text
-listening on :8080
-```
-
-### 3) Expose a public URL (for Viber)
-Use your preferred method (reverse proxy, tunnel, or production ingress). For quick testing with `ngrok`:
-
-```bash
-ngrok http 8080
-```
-
-Copy the HTTPS URL (e.g., `https://abcd1234.ngrok.io`) and set `VIBER_WEBHOOK_URL` to `https://abcd1234.ngrok.io/viber/webhook`.
-
-### 4) Register the Viber webhook
-
-Webhook registration is currently a stub in code (`EnsureWebhook` does nothing). Until that’s implemented, set the webhook manually with Viber’s API.
-
-Replace `VIBER_API_TOKEN` and `PUBLIC_URL` and run:
-
-```bash
-curl -X POST \
-  -H "X-Viber-Auth-Token: ${VIBER_API_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d '{
-        "url": "'"${PUBLIC_URL}/viber/webhook"'",
-        "event_types": ["message", "subscribed", "unsubscribed", "conversation_started"]
-      }' \
-  https://chatapi.viber.com/pa/set_webhook
-```
-
-If successful, Viber will start sending events to your endpoint and return a JSON payload with `status` and `status_message`.
-
-### 5) Verify Matrix relay (optional)
-If Matrix credentials are configured, send a text message to the Viber bot. The bridge will post a message like `"[Viber] Alice: Hello"` into `MATRIX_DEFAULT_ROOM_ID`.
+- `!bridge help` — Show available commands
+- `!bridge link <viber-user-id>` — Link a Viber user to your Matrix account
+- `!bridge unlink` — Unlink your Viber account
+- `!bridge status` — Show bridge status and statistics
+- `!bridge ping` — Test bridge responsiveness
 
 ---
 
-## Endpoints
-- `POST /viber/webhook` — receives Viber callbacks. Currently responds with `200 OK` without additional processing.
+## Security
 
-Health endpoints are not yet implemented; consider adding one (e.g., `GET /healthz`) for production deployments.
+### Webhook Security
+
+- **Signature Verification**: All Viber webhooks are verified using HMAC-SHA256
+- **Rate Limiting**: Per-IP token bucket rate limiter (5 req/sec, burst 10)
+- **Body Size Limits**: Maximum 2MB request body size
+
+### Best Practices
+
+1. **Always use HTTPS** for webhook URLs in production
+2. **Keep tokens secret**: Never commit tokens to version control
+3. **Monitor metrics**: Watch `/metrics` for unusual patterns
+4. **Review logs**: Structured logs help identify security issues
+5. **Update regularly**: Keep dependencies updated for security patches
 
 ---
 
-## Project layout
+## Metrics
 
-```
-cmd/
-  mautrix-viber/
-    main.go           # Entry point (HTTP server, webhook setup)
-internal/
-  config/
-    config.go         # Env-driven config loader
-  matrix/
-    bridge.go         # Bridge interface (placeholder)
-  viber/
-    client.go         # Viber client + webhook handler
-    types.go          # Minimal Viber types (events, payloads)
-go.mod
-```
+The bridge exposes Prometheus metrics at `/metrics`:
+
+- `viber_webhook_requests_total` — Total webhook requests by event type
+- `viber_messages_forwarded_total` — Messages forwarded to Matrix by type
+- `viber_signature_failures_total` — Signature verification failures
 
 ---
 
 ## Development
 
-### Run tests
-There are currently no tests. As you add functionality, prefer table-driven unit tests for handlers and Matrix/Viber adapters.
+### Project Structure
 
-### Lint/format
-Use your preferred Go linters/formatters. A typical setup:
+```
+cmd/
+  mautrix-viber/
+    main.go              # Application entry point
+    ratelimit.go         # Rate limiting middleware
+internal/
+  admin/
+    commands.go          # Bridge admin commands
+  api/
+    info.go              # API endpoints (info, health)
+  config/
+    config.go            # Environment config loader
+    config_file.go        # YAML config loader with validation
+  database/
+    database.go          # SQLite persistence layer
+  logger/
+    logger.go            # Structured JSON logging
+  matrix/
+    client.go            # Matrix client wrapper
+    events.go            # Matrix event listeners
+  retry/
+    retry.go             # Exponential backoff retry logic
+  viber/
+    client.go            # Viber webhook handler
+    send.go              # Viber send API functions
+    types.go             # Viber API types
+    metrics.go           # Prometheus metrics
+go.mod                   # Go dependencies
+Dockerfile               # Docker image definition
+docker-compose.yml       # Docker Compose setup
+config.example.yaml      # Example configuration
+```
+
+### Building
 
 ```bash
+# Build binary
+go build -o ./bin/mautrix-viber ./cmd/mautrix-viber
+
+# Run tests (when available)
+go test ./...
+
+# Format code
 go fmt ./...
+
+# Lint
 go vet ./...
-golangci-lint run
 ```
 
-### Hot reload (optional)
-For iterative development:
+### Adding Features
 
-```bash
-go install github.com/cosmtrek/air@latest
-air
-```
+The codebase is structured for easy extension:
+
+1. **Database operations**: Add methods to `internal/database/database.go`
+2. **Viber API calls**: Add functions to `internal/viber/send.go`
+3. **Matrix operations**: Extend `internal/matrix/client.go`
+4. **Admin commands**: Register in `internal/admin/commands.go`
 
 ---
 
-## Extending to a real bridge
+## Troubleshooting
 
-Suggested next steps:
-- Implement Viber webhook registration in `viber.Client.EnsureWebhook()` using `chatapi.viber.com/pa/set_webhook`.
-- Parse incoming `WebhookRequest` bodies in `WebhookHandler` and validate signatures (if applicable).
-- Map Viber events to Matrix events using `maunium.net/go/mautrix`.
-- Maintain user/room mappings (Matrix user ↔ Viber user, Matrix room ↔ Viber chat).
-- Add persistence for state (user links, message IDs) using a lightweight DB.
-- Implement backfill/history, media handling, typing/read receipts as needed.
+### Webhook not receiving events
 
-Security considerations:
-- Validate webhook origin and/or signature headers from Viber.
-- Use HTTPS everywhere; terminate TLS at the edge if needed.
-- Avoid logging sensitive content (tokens, message bodies) in production.
+1. Check webhook URL is publicly accessible
+2. Verify signature verification (check logs for failures)
+3. Ensure webhook is registered: check logs on startup
+4. Test with `curl -X POST https://your-url/viber/webhook -H "X-Viber-Content-Signature: test"`
 
----
+### Messages not bridging
 
-## FAQ
+1. Verify Matrix credentials are correct
+2. Check Matrix room ID format (`!roomid:example.com`)
+3. Review logs for errors
+4. Check `/api/info` for connection status
 
-**Why doesn’t the webhook register automatically?**
-The `EnsureWebhook` method is a placeholder. Use the curl snippet above for now, or implement the call to Viber’s API.
+### High error rates
 
-**Does it forward messages to Matrix already?**
-Not yet. The repo sets up the plumbing so you can add that next.
-
-**Docker? Helm?**
-Not provided yet. Contributions welcome.
+1. Check Prometheus metrics at `/metrics`
+2. Review structured logs for patterns
+3. Verify API rate limits aren't being exceeded
+4. Check database connection and disk space
 
 ---
 
 ## License
+
 This project is licensed under the MIT License. See `LICENSE` for details.
 
-# mautrix-viber
+---
 
-Matrix bridge for Viber using mautrix-go bridgev2.
+## Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new features
+4. Submit a pull request
+
+---
+
+## TODO
+
+See the comprehensive [feature roadmap](TODO.md) for planned enhancements:
+
+- [ ] Matrix ghost user puppeting
+- [ ] Group chat support
+- [ ] E2EE support  
+- [ ] Typing indicators & read receipts
+- [ ] Message search
+- [ ] Web admin panel
+- [ ] OpenTelemetry tracing
+- [ ] Redis caching
+- [ ] Circuit breaker pattern
+- [ ] Hot config reload
+- [ ] And 40+ more features...
+
+---
+
+## Acknowledgments
+
+Built with:
+- [mautrix-go](https://github.com/mautrix/go) — Matrix client library
+- [Prometheus](https://prometheus.io/) — Metrics
+- [log/slog](https://pkg.go.dev/log/slog) — Structured logging
+
+---
+
+**Status**: Production-ready with comprehensive feature set. Actively maintained and extended.

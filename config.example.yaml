@@ -1,0 +1,22 @@
+# Example configuration file for mautrix-viber
+# Copy this to config.yaml and fill in your values
+# Environment variables override file values
+
+viber:
+  api_token: "your-viber-bot-token"
+  webhook_url: "https://your-domain.com/viber/webhook"
+
+matrix:
+  homeserver_url: "https://matrix.example.com"
+  access_token: "your-matrix-access-token"
+  default_room_id: "!roomid:example.com"
+
+server:
+  listen_address: ":8080"
+
+database:
+  path: "./data/bridge.db"
+
+logging:
+  level: "info"  # debug, info, warn, error
+
