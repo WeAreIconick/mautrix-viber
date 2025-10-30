@@ -66,6 +66,17 @@ func (d *DB) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_viber_users_matrix ON viber_users(matrix_user_id);
 	CREATE INDEX IF NOT EXISTS idx_message_mappings_viber ON message_mappings(viber_message_id);
 	CREATE INDEX IF NOT EXISTS idx_message_mappings_matrix ON message_mappings(matrix_event_id);
+
+	CREATE TABLE IF NOT EXISTS group_members (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		viber_chat_id TEXT NOT NULL,
+		viber_user_id TEXT NOT NULL,
+		joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE(viber_chat_id, viber_user_id)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_group_members_chat ON group_members(viber_chat_id);
+	CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(viber_user_id);
 	`
 	if _, err := d.db.Exec(schema); err != nil {
 		return fmt.Errorf("create tables: %w", err)
@@ -181,5 +192,29 @@ func (d *DB) GetMatrixEventID(viberMsgID string) (string, error) {
 		return "", nil
 	}
 	return eventID, err
+}
+
+// UpsertGroupMember ensures a (chat,user) membership row exists.
+func (d *DB) UpsertGroupMember(viberChatID, viberUserID string) error {
+    _, err := d.db.Exec(
+        `INSERT INTO group_members (viber_chat_id, viber_user_id)
+         VALUES (?, ?) ON CONFLICT(viber_chat_id, viber_user_id) DO NOTHING`,
+        viberChatID, viberUserID,
+    )
+    return err
+}
+
+// ListGroupMembers returns all user IDs in a Viber chat.
+func (d *DB) ListGroupMembers(viberChatID string) ([]string, error) {
+    rows, err := d.db.Query(`SELECT viber_user_id FROM group_members WHERE viber_chat_id = ?`, viberChatID)
+    if err != nil { return nil, err }
+    defer rows.Close()
+    var users []string
+    for rows.Next() {
+        var uid string
+        if err := rows.Scan(&uid); err != nil { return nil, err }
+        users = append(users, uid)
+    }
+    return users, rows.Err()
 }
 

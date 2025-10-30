@@ -11,6 +11,7 @@ import (
     "time"
 
     "github.com/example/mautrix-viber/internal/config"
+    "github.com/example/mautrix-viber/internal/database"
     imatrix "github.com/example/mautrix-viber/internal/matrix"
 	"github.com/example/mautrix-viber/internal/viber"
     "github.com/example/mautrix-viber/internal/api"
@@ -38,13 +39,20 @@ func main() {
         log.Printf("matrix config incomplete; message relay will be disabled")
     }
 
+    // Open database
+    db, err := database.Open(env.DatabasePath)
+    if err != nil {
+        log.Fatalf("failed to open database: %v", err)
+    }
+    defer db.Close()
+
     cfg := viber.Config{
         APIToken:      env.APIToken,
         WebhookURL:    env.WebhookURL,
         ListenAddress: env.ListenAddress,
     }
 
-    v := viber.NewClient(cfg, mxClient)
+    v := viber.NewClient(cfg, mxClient, db)
 	if err := v.EnsureWebhook(); err != nil {
 		log.Fatalf("failed to ensure webhook: %v", err)
 	}

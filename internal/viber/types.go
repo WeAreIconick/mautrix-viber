@@ -25,12 +25,17 @@ type Message struct {
 	Media   string `json:"media,omitempty"`
     FileName string `json:"file_name,omitempty"`
     Thumbnail string `json:"thumbnail,omitempty"`
+    // Group or chat identifiers (may vary by Viber API version)
+    ChatID   string `json:"chat_id,omitempty"`
 }
 
 type WebhookRequest struct {
 	Event   Event   `json:"event"`
 	Sender  Sender  `json:"sender"`
 	Message Message `json:"message"`
+    // Token/hostname fields commonly present in Viber webhooks
+    MessageToken int64  `json:"message_token,omitempty"`
+    ChatHostname string `json:"chat_hostname,omitempty"`
 }
 
 // Webhook set response

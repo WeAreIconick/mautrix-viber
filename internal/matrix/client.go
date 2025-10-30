@@ -81,6 +81,19 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
     return nil
 }
 
+// EnsureGhostUser attempts to set displayname/avatar for a ghost user.
+// Note: Proper puppeting usually requires an appservice. This is a stub for future integration.
+func (c *Client) EnsureGhostUser(ctx context.Context, userID id.UserID, displayName string) error {
+    // Best-effort: set profile if token has privileges
+    if displayName != "" {
+        if err := c.mxClient.SetDisplayName(ctx, userID, displayName); err != nil {
+            // Ignore errors; may lack permissions
+            return nil
+        }
+    }
+    return nil
+}
+
 // StartMessageListener starts a background sync and invokes onMessage for message events.
 func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)) error {
     syncer := c.mxClient.Sync()

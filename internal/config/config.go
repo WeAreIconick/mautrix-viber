@@ -12,6 +12,7 @@ type Config struct {
     MatrixAccessToken   string
     MatrixDefaultRoomID string
     ViberDefaultReceiverID string
+    DatabasePath string
 }
 
 func FromEnv() Config {
@@ -26,5 +27,9 @@ func FromEnv() Config {
     cfg.MatrixAccessToken = os.Getenv("MATRIX_ACCESS_TOKEN")
     cfg.MatrixDefaultRoomID = os.Getenv("MATRIX_DEFAULT_ROOM_ID")
     cfg.ViberDefaultReceiverID = os.Getenv("VIBER_DEFAULT_RECEIVER_ID")
+    cfg.DatabasePath = os.Getenv("DATABASE_PATH")
+    if cfg.DatabasePath == "" {
+        cfg.DatabasePath = "./data/bridge.db"
+    }
 	return cfg
 }

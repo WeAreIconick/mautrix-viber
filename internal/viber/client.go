@@ -14,6 +14,7 @@ import (
     "time"
 
     mx "github.com/example/mautrix-viber/internal/matrix"
+    "github.com/example/mautrix-viber/internal/database"
 )
 
 type Config struct {
@@ -26,10 +27,11 @@ type Client struct {
     config     Config
     httpClient *http.Client
     matrix     *mx.Client
+    db         *database.DB
 }
 
-func NewClient(cfg Config, matrixClient *mx.Client) *Client {
-    return &Client{config: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, matrix: matrixClient}
+func NewClient(cfg Config, matrixClient *mx.Client, db *database.DB) *Client {
+    return &Client{config: cfg, httpClient: &http.Client{Timeout: 15 * time.Second}, matrix: matrixClient, db: db}
 }
 
 // Placeholder for setting webhook with Viber API
@@ -101,6 +103,14 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
         text := fmt.Sprintf("[Viber] %s: %s", payload.Sender.Name, payload.Message.Text)
         _ = c.matrix.SendText(context.Background(), text)
         metricForwardedMessages.WithLabelValues("text").Inc()
+    }
+
+    // Upsert sender into DB for mapping and group membership when chat ID is present
+    if c.db != nil && payload.Sender.ID != "" && payload.Sender.Name != "" {
+        _ = c.db.UpsertViberUser(payload.Sender.ID, payload.Sender.Name)
+        if payload.Message.ChatID != "" {
+            _ = c.db.UpsertGroupMember(payload.Message.ChatID, payload.Sender.ID)
+        }
     }
 
     // Picture message -> download media and forward as image
