@@ -9,16 +9,17 @@ import (
 	mautrix "maunium.net/go/mautrix"
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
+
+	"github.com/example/mautrix-viber/internal/logger"
 )
 
 // EventHandler handles incoming Matrix events for bridging.
 type EventHandler struct {
-	mxClient    *mautrix.Client
-	viberClient interface{ // *viber.Client to avoid circular import
-		SendText(ctx context.Context, receiver, text string) error
-	}
+	mxClient     *mautrix.Client
+	viberClient  interface{} // *viber.Client stored as interface{} to avoid circular import
 	defaultRoomID string
-	onMessage     func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)
+	onMessage    func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)
+	ctx          context.Context // Context for event handling (set by Start)
 }
 
 // NewEventHandler creates a new Matrix event handler.
@@ -43,7 +44,9 @@ func (h *EventHandler) SetOnMessage(fn func(ctx context.Context, evt *event.Mess
 }
 
 // Start starts listening to Matrix events using sync.
+// The provided context controls the lifecycle of the event listener.
 func (h *EventHandler) Start(ctx context.Context) error {
+	h.ctx = ctx // Store context for use in event handlers
 	sync := h.mxClient.Sync()
 	sync.OnEventType(event.EventMessage, h.handleMessage)
 	sync.OnEventType(event.EventReaction, h.handleReaction)
@@ -53,9 +56,10 @@ func (h *EventHandler) Start(ctx context.Context) error {
 
 	go func() {
 		if err := sync.SyncWithContext(ctx); err != nil && err != context.Canceled {
-			// Log sync errors using structured logging
-			// In production, use: logger.Error("matrix sync error", "error", err)
-			// For now, we silently continue as sync errors may be expected during shutdown
+			// Log sync errors - context.Canceled is expected during shutdown
+			logger.Error("matrix sync error",
+				"error", err,
+			)
 		}
 	}()
 
@@ -63,11 +67,13 @@ func (h *EventHandler) Start(ctx context.Context) error {
 }
 
 // handleMessage handles Matrix message events.
+// Uses the handler's context for message callbacks to allow cancellation.
 func (h *EventHandler) handleMessage(source mautrix.EventSource, evt *event.Event) {
 	if h.onMessage != nil {
 		msgEvt, ok := evt.Content.Parsed.(*event.MessageEventContent)
 		if ok {
-			h.onMessage(context.Background(), msgEvt, evt.RoomID, evt.Sender)
+			// Use handler's context (derived from sync context) for cancellation propagation
+			h.onMessage(h.ctx, msgEvt, evt.RoomID, evt.Sender)
 		}
 	}
 }

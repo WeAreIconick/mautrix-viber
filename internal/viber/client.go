@@ -15,13 +15,17 @@ import (
 
     mx "github.com/example/mautrix-viber/internal/matrix"
     "github.com/example/mautrix-viber/internal/database"
+    "github.com/example/mautrix-viber/internal/logger"
+    "github.com/example/mautrix-viber/internal/metrics"
 )
 
 // Config holds Viber API configuration.
 type Config struct {
-	APIToken      string // Viber Bot API token for authentication
-	WebhookURL    string // Public HTTPS URL where Viber will send webhooks
-	ListenAddress string // HTTP server listen address (optional)
+	APIToken       string        // Viber Bot API token for authentication
+	WebhookURL     string        // Public HTTPS URL where Viber will send webhooks
+	ViberAPIBaseURL string       // Viber API base URL (default: "https://chatapi.viber.com")
+	ListenAddress  string        // HTTP server listen address (optional)
+	HTTPTimeout    time.Duration // HTTP client timeout (default: 15s)
 }
 
 // Client manages Viber API interactions and webhook handling.
@@ -36,9 +40,13 @@ type Client struct {
 // NewClient creates a new Viber client with the given configuration.
 // matrixClient and db may be nil if those features are not configured.
 func NewClient(cfg Config, matrixClient *mx.Client, db *database.DB) *Client {
+	timeout := cfg.HTTPTimeout
+	if timeout == 0 {
+		timeout = 15 * time.Second // Default timeout
+	}
 	return &Client{
 		config:     cfg,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
+		httpClient: &http.Client{Timeout: timeout},
 		matrix:     matrixClient,
 		db:         db,
 	}
@@ -47,9 +55,13 @@ func NewClient(cfg Config, matrixClient *mx.Client, db *database.DB) *Client {
 // EnsureWebhook registers the webhook URL with Viber's API.
 // This should be called on startup to ensure Viber knows where to send events.
 // Returns an error if registration fails.
-func (c *Client) EnsureWebhook() error {
+func (c *Client) EnsureWebhook(ctx context.Context) error {
     if c.config.WebhookURL == "" || c.config.APIToken == "" {
         return fmt.Errorf("webhook url or api token not configured")
+    }
+    apiBaseURL := c.config.ViberAPIBaseURL
+    if apiBaseURL == "" {
+        apiBaseURL = "https://chatapi.viber.com"
     }
     // Build payload for set_webhook
     body := map[string]any{
@@ -60,7 +72,7 @@ func (c *Client) EnsureWebhook() error {
     if err != nil {
         return fmt.Errorf("marshal webhook payload: %w", err)
     }
-    req, err := http.NewRequest(http.MethodPost, "https://chatapi.viber.com/pa/set_webhook", bytes.NewReader(data))
+    req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiBaseURL+"/pa/set_webhook", bytes.NewReader(data))
     if err != nil {
         return fmt.Errorf("create set_webhook request: %w", err)
     }
@@ -127,10 +139,19 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// This is the basic bridging functionality - more advanced features
 	// (media, formatting, etc.) are handled in other modules
 	if payload.Event == EventMessage && payload.Message.Type == "text" && c.matrix != nil {
+		start := time.Now()
 		text := fmt.Sprintf("[Viber] %s: %s", payload.Sender.Name, payload.Message.Text)
-		if err := c.matrix.SendText(context.Background(), text); err != nil {
+		if err := c.matrix.SendText(r.Context(), text); err != nil {
 			// Log error but don't fail the webhook - this is best-effort forwarding
-			// In production, use structured logging here
+			logger.Warn("failed to forward text message to Matrix",
+				"error", err,
+				"sender", payload.Sender.Name,
+				"event", payload.Event,
+			)
+			metrics.RecordError("message_forward_failure", "webhook")
+		} else {
+			// Record message processing latency for successful forwards
+			metrics.RecordMessageLatency("viber_to_matrix", "text", time.Since(start))
 		}
 		metricForwardedMessages.WithLabelValues("text").Inc()
 	}
@@ -140,12 +161,20 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	if c.db != nil && payload.Sender.ID != "" && payload.Sender.Name != "" {
         if err := c.db.UpsertViberUser(payload.Sender.ID, payload.Sender.Name); err != nil {
             // Log error but don't fail webhook - best-effort persistence
-            // In production, use structured logging here
+            logger.Warn("failed to upsert Viber user",
+                "error", err,
+                "viber_user_id", payload.Sender.ID,
+                "viber_user_name", payload.Sender.Name,
+            )
         }
         if payload.Message.ChatID != "" {
             if err := c.db.UpsertGroupMember(payload.Message.ChatID, payload.Sender.ID); err != nil {
                 // Log error but don't fail webhook - best-effort persistence
-                // In production, use structured logging here
+                logger.Warn("failed to upsert group member",
+                    "error", err,
+                    "chat_id", payload.Message.ChatID,
+                    "user_id", payload.Sender.ID,
+                )
             }
         }
     }
@@ -153,8 +182,8 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
     // Picture message -> download media and forward as image
     if payload.Event == EventMessage && (payload.Message.Type == "picture" || strings.HasSuffix(strings.ToLower(payload.Message.Media), ".jpg") || strings.HasSuffix(strings.ToLower(payload.Message.Media), ".png")) && c.matrix != nil {
         if payload.Message.Media != "" {
-            // Download media
-            req, err := http.NewRequest(http.MethodGet, payload.Message.Media, nil)
+            // Download media using request context for cancellation support
+            req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, payload.Message.Media, nil)
             if err == nil {
                 resp, err := c.httpClient.Do(req)
                 if err == nil && resp.StatusCode == http.StatusOK {
@@ -162,7 +191,11 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
                     resp.Body.Close()
                     if err != nil {
                         // Log error but don't fail webhook - best-effort image forwarding
-                        // In production, use structured logging here
+                        logger.Warn("failed to read image data from media URL",
+                            "error", err,
+                            "media_url", payload.Message.Media,
+                            "event", payload.Event,
+                        )
                     } else {
                         filename := payload.Message.FileName
                         if filename == "" {
@@ -170,9 +203,13 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
                         }
                         // best-effort content-type
                         mimeType := resp.Header.Get("Content-Type")
-                        if err := c.matrix.SendImage(context.Background(), filename, mimeType, data, nil); err != nil {
+                        if err := c.matrix.SendImage(r.Context(), filename, mimeType, data, nil); err != nil {
                             // Log error but don't fail webhook - best-effort forwarding
-                            // In production, use structured logging here
+                            logger.Warn("failed to forward image to Matrix",
+                                "error", err,
+                                "filename", filename,
+                                "sender", payload.Sender.Name,
+                            )
                         } else {
                             metricForwardedMessages.WithLabelValues("image").Inc()
                         }

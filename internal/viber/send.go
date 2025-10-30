@@ -10,6 +10,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
+
+	"github.com/example/mautrix-viber/internal/metrics"
 )
 
 // SendMessageRequest represents a Viber send message API request.
@@ -145,14 +148,25 @@ func (c *Client) SendMessage(ctx context.Context, req SendMessageRequest) (*Send
 		return nil, fmt.Errorf("api token not configured")
 	}
 
-	apiURL := "https://chatapi.viber.com/pa/send_message"
+	start := time.Now()
+	defer func() {
+		metrics.RecordOperationDuration("viber_send_message", time.Since(start))
+	}()
+
+	apiBaseURL := c.config.ViberAPIBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = "https://chatapi.viber.com"
+	}
+	apiURL := apiBaseURL + "/pa/send_message"
 	body, err := json.Marshal(req)
 	if err != nil {
+		metrics.RecordError("viber_marshal_failure", "send")
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewReader(body))
 	if err != nil {
+		metrics.RecordError("viber_request_failure", "send")
 		return nil, fmt.Errorf("create request: %w", err)
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
@@ -160,25 +174,30 @@ func (c *Client) SendMessage(ctx context.Context, req SendMessageRequest) (*Send
 
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		metrics.RecordError("viber_send_failure", "send")
 		return nil, fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		metrics.RecordError("viber_read_failure", "send")
 		return nil, fmt.Errorf("read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		metrics.RecordError("viber_api_error", "send")
 		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(respBody))
 	}
 
 	var sendResp SendMessageResponse
 	if err := json.Unmarshal(respBody, &sendResp); err != nil {
+		metrics.RecordError("viber_decode_failure", "send")
 		return nil, fmt.Errorf("unmarshal response: %w", err)
 	}
 
 	if sendResp.Status != 0 {
+		metrics.RecordError("viber_api_error", "send")
 		return nil, fmt.Errorf("viber api error %d: %s", sendResp.Status, sendResp.StatusMessage)
 	}
 
@@ -191,7 +210,11 @@ func (c *Client) GetUserDetails(ctx context.Context, userID string) (*UserDetail
 		return nil, fmt.Errorf("api token not configured")
 	}
 
-	apiURL := fmt.Sprintf("https://chatapi.viber.com/pa/get_user_details?id=%s", url.QueryEscape(userID))
+	apiBaseURL := c.config.ViberAPIBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = "https://chatapi.viber.com"
+	}
+	apiURL := fmt.Sprintf("%s/pa/get_user_details?id=%s", apiBaseURL, url.QueryEscape(userID))
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)

@@ -34,8 +34,35 @@ func Open(path string) (*DB, error) {
 	db.SetConnMaxLifetime(5 * time.Minute)  // Refresh connections periodically
 	db.SetConnMaxIdleTime(10 * time.Minute) // Close idle connections
 	
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("ping database: %w", err)
+	// Retry database ping with exponential backoff (useful for network databases or startup delays)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	var pingErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		if attempt > 0 {
+			// Exponential backoff: 100ms, 200ms, 400ms
+			delay := time.Duration(100*(1<<uint(attempt-1))) * time.Millisecond
+			select {
+			case <-ctx.Done():
+				db.Close()
+				return nil, fmt.Errorf("database ping timeout: %w", pingErr)
+			case <-time.After(delay):
+			}
+		}
+		
+		pingCtx, pingCancel := context.WithTimeout(ctx, 5*time.Second)
+		pingErr = db.PingContext(pingCtx)
+		pingCancel()
+		
+		if pingErr == nil {
+			break
+		}
+	}
+	
+	if pingErr != nil {
+		db.Close()
+		return nil, fmt.Errorf("ping database after retries: %w", pingErr)
 	}
 	d := &DB{db: db}
 	if err := d.migrate(); err != nil {

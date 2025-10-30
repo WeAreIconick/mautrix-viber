@@ -58,13 +58,15 @@ func main() {
     defer db.Close()
 
     cfg := viber.Config{
-        APIToken:      env.APIToken,
-        WebhookURL:    env.WebhookURL,
-        ListenAddress: env.ListenAddress,
+        APIToken:       env.APIToken,
+        WebhookURL:     env.WebhookURL,
+        ViberAPIBaseURL: env.ViberAPIBaseURL,
+        ListenAddress:  env.ListenAddress,
+        HTTPTimeout:    env.HTTPClientTimeout,
     }
 
     v := viber.NewClient(cfg, mxClient, db)
-	if err := v.EnsureWebhook(); err != nil {
+	if err := v.EnsureWebhook(context.Background()); err != nil {
 		log.Fatalf("failed to ensure webhook: %v", err)
 	}
 

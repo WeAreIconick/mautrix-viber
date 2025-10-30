@@ -18,8 +18,10 @@ func (c *Client) HandleLocation(ctx context.Context, lat, lon float64, label str
 		locationText = fmt.Sprintf("📍 Location\nLatitude: %.6f\nLongitude: %.6f", lat, lon)
 	}
 	
-	// Generate map preview URL (e.g., OpenStreetMap)
-	mapURL := fmt.Sprintf("https://www.openstreetmap.org/?mlat=%.6f&mlon=%.6f&zoom=15", lat, lon)
+	// Generate map preview URL (OpenStreetMap)
+	// Note: This could be made configurable via config if needed for different map providers
+	const osmBaseURL = "https://www.openstreetmap.org"
+	mapURL := fmt.Sprintf("%s/?mlat=%.6f&mlon=%.6f&zoom=15", osmBaseURL, lat, lon)
 	
 	// Send as text with map URL
 	text := fmt.Sprintf("%s\n\nMap: %s", locationText, mapURL)

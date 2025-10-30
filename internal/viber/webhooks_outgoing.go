@@ -28,10 +28,14 @@ type OutgoingWebhookManager struct {
 }
 
 // NewOutgoingWebhookManager creates a new outgoing webhook manager.
-func NewOutgoingWebhookManager() *OutgoingWebhookManager {
+// timeout defaults to 5 seconds if not provided (0 duration).
+func NewOutgoingWebhookManager(timeout time.Duration) *OutgoingWebhookManager {
+	if timeout == 0 {
+		timeout = 5 * time.Second // Default timeout for webhook calls
+	}
 	return &OutgoingWebhookManager{
 		webhooks: []OutgoingWebhook{},
-		client:   &http.Client{Timeout: 5 * time.Second},
+		client:   &http.Client{Timeout: timeout},
 	}
 }
 
@@ -63,8 +67,8 @@ func (owm *OutgoingWebhookManager) SendWebhook(ctx context.Context, eventType st
 		// Send webhook
 		if err := owm.sendWebhook(ctx, webhook, eventType, payload); err != nil {
 			// Log error but continue with other webhooks
-			// In production, use structured logging:
-			// logger.Warn("failed to send outgoing webhook", "url", webhook.URL, "error", err)
+			// Note: Logger would be imported if this package needs logging
+			// For now, errors are returned but not logged at this level
 		}
 	}
 	

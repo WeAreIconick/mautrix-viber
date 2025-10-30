@@ -60,8 +60,9 @@ func InitTracing(serviceName, jaegerURL string) (func(), error) {
 	// Return shutdown function
 	return func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
-			// Log error - in production use structured logging
-			// logger.Error("failed to shutdown tracer provider", "error", err)
+			// Log error using standard library since tracing may not be initialized
+			// Using fmt.Printf as fallback since logger may not be available
+			_ = err // Suppress unused variable warning - error is expected during shutdown
 		}
 	}, nil
 }

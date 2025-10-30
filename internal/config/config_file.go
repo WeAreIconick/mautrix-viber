@@ -4,9 +4,13 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/example/mautrix-viber/internal/utils"
 )
 
 // FileConfig represents configuration from a YAML file.
@@ -111,6 +115,7 @@ func (c Config) Validate() error {
 	// Matrix configuration validation (required if bridging)
 	hasMatrixConfig := c.MatrixHomeserverURL != "" || c.MatrixAccessToken != "" || c.MatrixDefaultRoomID != ""
 	if hasMatrixConfig {
+		// Validate Matrix homeserver URL format
 		if c.MatrixHomeserverURL == "" {
 			errors = append(errors, "MATRIX_HOMESERVER_URL is required when Matrix bridging is enabled")
 		} else {
@@ -125,6 +130,11 @@ func (c Config) Validate() error {
 		
 		if c.MatrixDefaultRoomID == "" {
 			errors = append(errors, "MATRIX_DEFAULT_ROOM_ID is required when Matrix bridging is enabled")
+		} else {
+			// Validate Matrix room ID format using regex
+			if err := utils.ValidateMatrixRoomID(c.MatrixDefaultRoomID); err != nil {
+				errors = append(errors, fmt.Sprintf("MATRIX_DEFAULT_ROOM_ID has invalid format: %v", err))
+			}
 		}
 	}
 	

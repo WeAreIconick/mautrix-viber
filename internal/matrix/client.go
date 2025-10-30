@@ -5,11 +5,15 @@ import (
     "fmt"
     "mime"
     "path/filepath"
+    "time"
 
     mautrix "maunium.net/go/mautrix"
     "maunium.net/go/mautrix/format"
     "maunium.net/go/mautrix/id"
     "maunium.net/go/mautrix/event"
+
+    "github.com/example/mautrix-viber/internal/logger"
+    "github.com/example/mautrix-viber/internal/metrics"
 )
 
 // Client is a minimal Matrix client wrapper for sending messages into a single room.
@@ -44,9 +48,14 @@ func (c *Client) SendText(ctx context.Context, text string) error {
     if c.defaultRoomID == "" {
         return fmt.Errorf("default room ID not configured")
     }
+    start := time.Now()
+    defer func() {
+        metrics.RecordOperationDuration("matrix_send_text", time.Since(start))
+    }()
     content := format.RenderMarkdown(text, true, true)
     _, err := c.mxClient.SendMessageEvent(ctx, c.defaultRoomID, mautrix.EventMessage, content)
     if err != nil {
+        metrics.RecordError("matrix_send_failure", "client")
         return fmt.Errorf("send matrix message: %w", err)
     }
     return nil
@@ -57,6 +66,10 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
     if c.defaultRoomID == "" {
         return fmt.Errorf("default room ID not configured")
     }
+    start := time.Now()
+    defer func() {
+        metrics.RecordOperationDuration("matrix_send_image", time.Since(start))
+    }()
     if mimeType == "" {
         // best-effort guess from extension
         mimeType = mime.TypeByExtension(filepath.Ext(filename))
@@ -66,6 +79,7 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
     }
     uploadResp, err := c.mxClient.UploadToContentRepo(data, mimeType, int64(len(data)))
     if err != nil {
+        metrics.RecordError("matrix_upload_failure", "client")
         return fmt.Errorf("upload image: %w", err)
     }
     content := mautrix.MessageEventContent{
@@ -76,6 +90,7 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
     }
     _, err = c.mxClient.SendMessageEvent(ctx, id.RoomID(c.defaultRoomID), mautrix.EventMessage, content)
     if err != nil {
+        metrics.RecordError("matrix_send_failure", "client")
         return fmt.Errorf("send image message: %w", err)
     }
     return nil
@@ -95,6 +110,8 @@ func (c *Client) EnsureGhostUser(ctx context.Context, userID id.UserID, displayN
 }
 
 // StartMessageListener starts a background sync and invokes onMessage for message events.
+// The provided context controls the lifecycle of the sync operation.
+// Each message callback receives a context derived from the parent context for cancellation propagation.
 func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)) error {
 	syncer := c.mxClient.Sync()
 	syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
@@ -105,12 +122,16 @@ func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx co
 		if !ok {
 			return
 		}
-		onMessage(context.Background(), msg, evt.RoomID, evt.Sender)
+		// Use parent context for cancellation propagation (background listener context)
+		// This allows the message handler to respect context cancellation from shutdown
+		onMessage(ctx, msg, evt.RoomID, evt.Sender)
 	})
 	go func() {
 		if err := syncer.SyncWithContext(ctx); err != nil && err != context.Canceled {
-			// Log sync errors using structured logging
-			// In production, use logger.Error("matrix sync error", "error", err)
+			// Log sync errors - context.Canceled is expected during shutdown
+			logger.Error("matrix sync error",
+				"error", err,
+			)
 		}
 	}()
 	return nil

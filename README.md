@@ -163,11 +163,13 @@ ngrok http 8080
 |----------|-------------|----------|
 | `VIBER_API_TOKEN` | Viber Bot API token | ✅ Yes |
 | `VIBER_WEBHOOK_URL` | Public HTTPS URL for Viber webhooks | ✅ Yes |
+| `VIBER_API_BASE_URL` | Viber API base URL (default: `https://chatapi.viber.com`) | No |
 | `LISTEN_ADDRESS` | HTTP server listen address (default: `:8080`) | No |
 | `MATRIX_HOMESERVER_URL` | Matrix homeserver base URL | Yes (if bridging) |
 | `MATRIX_ACCESS_TOKEN` | Matrix access token | Yes (if bridging) |
 | `MATRIX_DEFAULT_ROOM_ID` | Default Matrix room for bridged messages | Yes (if bridging) |
 | `DATABASE_PATH` | SQLite database path (default: `./data/bridge.db`) | No |
+| `HTTP_CLIENT_TIMEOUT` | HTTP client timeout in seconds (default: `15`) | No |
 | `LOG_LEVEL` | Log level: debug, info, warn, error (default: `info`) | No |
 | `VIBER_DEFAULT_RECEIVER_ID` | Default Viber user ID for Matrix → Viber forwarding | Optional |
 

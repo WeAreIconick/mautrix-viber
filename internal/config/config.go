@@ -4,6 +4,8 @@ package config
 
 import (
 	"os"
+	"strconv"
+	"time"
 )
 
 // Config holds all bridge configuration settings.
@@ -12,6 +14,7 @@ type Config struct {
 	// Viber API configuration
 	APIToken      string // Viber Bot API token (required)
 	WebhookURL    string // Public HTTPS URL for Viber webhooks (required)
+	ViberAPIBaseURL string // Viber API base URL (default: "https://chatapi.viber.com")
 	ListenAddress string // HTTP server listen address (default: ":8080")
 	
 	// Matrix client configuration
@@ -20,8 +23,9 @@ type Config struct {
 	MatrixDefaultRoomID string // Default Matrix room for bridged messages (required if bridging)
 	
 	// Optional features
-	ViberDefaultReceiverID string // Default Viber user ID for Matrix → Viber forwarding (optional)
-	DatabasePath          string // SQLite database path (default: "./data/bridge.db")
+	ViberDefaultReceiverID string        // Default Viber user ID for Matrix → Viber forwarding (optional)
+	DatabasePath           string        // SQLite database path (default: "./data/bridge.db")
+	HTTPClientTimeout      time.Duration // HTTP client timeout for API calls (default: 15s)
 }
 
 // FromEnv loads configuration from environment variables.
@@ -31,6 +35,10 @@ func FromEnv() Config {
 	cfg := Config{}
 	cfg.APIToken = os.Getenv("VIBER_API_TOKEN")
 	cfg.WebhookURL = os.Getenv("VIBER_WEBHOOK_URL")
+	cfg.ViberAPIBaseURL = os.Getenv("VIBER_API_BASE_URL")
+	if cfg.ViberAPIBaseURL == "" {
+		cfg.ViberAPIBaseURL = "https://chatapi.viber.com"
+	}
 	cfg.ListenAddress = os.Getenv("LISTEN_ADDRESS")
 	if cfg.ListenAddress == "" {
 		cfg.ListenAddress = ":8080"
@@ -43,5 +51,15 @@ func FromEnv() Config {
     if cfg.DatabasePath == "" {
         cfg.DatabasePath = "./data/bridge.db"
     }
+	// HTTP client timeout (in seconds)
+	if timeoutStr := os.Getenv("HTTP_CLIENT_TIMEOUT"); timeoutStr != "" {
+		if timeoutSec, err := strconv.Atoi(timeoutStr); err == nil && timeoutSec > 0 {
+			cfg.HTTPClientTimeout = time.Duration(timeoutSec) * time.Second
+		} else {
+			cfg.HTTPClientTimeout = 15 * time.Second // Default on parse error
+		}
+	} else {
+		cfg.HTTPClientTimeout = 15 * time.Second // Default
+	}
 	return cfg
 }
