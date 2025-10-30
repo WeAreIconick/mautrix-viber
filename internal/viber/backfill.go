@@ -43,8 +43,8 @@ func (bm *BackfillManager) BackfillChatHistory(ctx context.Context, viberChatID,
 	
 	// Store room mapping if not exists
 	if err := bm.db.CreateRoomMapping(viberChatID, matrixRoomID); err != nil {
-		// Ignore if mapping already exists
-		fmt.Printf("warning: room mapping may already exist: %v\n", err)
+		// Ignore if mapping already exists - this is expected if mapping already exists
+		// Log at debug level since this is not an error condition
 	}
 	
 	return nil

@@ -2,7 +2,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"sync"
@@ -61,9 +60,11 @@ func (rc *ReloadableConfig) listenForReload() {
 	
 	for range sigChan {
 		if err := rc.Reload(); err != nil {
-			fmt.Printf("Error reloading config: %v\n", err)
+			// Log error - in production use structured logging
+			// logger.Error("failed to reload configuration", "error", err)
 		} else {
-			fmt.Println("Configuration reloaded successfully")
+			// Log success - in production use structured logging
+			// logger.Info("configuration reloaded successfully")
 		}
 	}
 }

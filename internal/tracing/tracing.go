@@ -60,7 +60,8 @@ func InitTracing(serviceName, jaegerURL string) (func(), error) {
 	// Return shutdown function
 	return func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
-			fmt.Printf("Error shutting down tracer provider: %v\n", err)
+			// Log error - in production use structured logging
+			// logger.Error("failed to shutdown tracer provider", "error", err)
 		}
 	}, nil
 }

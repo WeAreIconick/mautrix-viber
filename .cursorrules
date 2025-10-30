@@ -1,0 +1,606 @@
+# mautrix-viber Coding Standards & Best Practices
+
+This file defines coding standards, best practices, and architectural patterns for the mautrix-viber project. Always follow these guidelines when working on this codebase.
+
+## Project Structure & Organization
+
+### Standard Go Layout
+- Follow standard Go project layout: `cmd/`, `internal/`, `pkg/`, `api/`, etc.
+- Keep `main.go` minimal - just wire things together
+- Use `internal/` for code you don't want others importing
+- Group by feature/domain, not by layer (avoid `/models`, `/controllers`, `/services`)
+- One package per directory, package name matches directory name
+- No circular dependencies between packages
+
+### Example Structure
+```
+cmd/mautrix-viber/     # Application entry points
+internal/              # Private application code
+  ├── admin/          # Admin commands
+  ├── api/            # REST API handlers
+  ├── database/       # Database layer
+  ├── matrix/         # Matrix client
+  └── viber/          # Viber client
+pkg/                   # Public library code (if any)
+test/                  # Test utilities and integration tests
+docs/                  # Documentation
+scripts/               # Build and deployment scripts
+```
+
+## Go Idioms & Best Practices
+
+### Core Principles
+- **Returns errors, never panics** (except in `init()` or truly unrecoverable situations)
+- **Uses defer for cleanup** (closing files, unlocking mutexes, etc.)
+- **Accepts interfaces, returns concrete types**
+- **Makes the zero value useful** when possible
+- **Uses short variable names**: `i`, `j` for loops; `r` for `http.Request`; `w` for `http.ResponseWriter`
+- **Keeps functions small and focused** (one job per function)
+- **Uses table-driven tests**
+- **Follows effective Go naming conventions** (MixedCaps, not snake_case)
+
+### Example Good Code
+```go
+// Accept interfaces, return concrete types
+func ProcessUser(db UserRepository, userID string) (*User, error) {
+    defer db.Close() // Cleanup with defer
+    // Implementation
+}
+
+// Short names for common types
+func handleRequest(w http.ResponseWriter, r *http.Request) {
+    // Implementation
+}
+
+// Small, focused functions
+func validateUserID(id string) error {
+    if id == "" {
+        return errors.New("user ID cannot be empty")
+    }
+    return nil
+}
+```
+
+## Error Handling
+
+### Requirements
+- **Never ignore errors**: `_ = someFunc()` is a red flag unless justified
+- **Wrap errors with context**: `fmt.Errorf("failed to open file: %w", err)`
+- **Use sentinel errors** for specific cases: `var ErrNotFound = errors.New("not found")`
+- **Returns errors as the last return value**
+- **Check errors immediately** after calls
+- **Provide meaningful error messages** with context about what failed and why
+
+### Example
+```go
+// Good: Error wrapping with context
+func LoadConfig(path string) (*Config, error) {
+    f, err := os.Open(path)
+    if err != nil {
+        return nil, fmt.Errorf("failed to open config file %s: %w", path, err)
+    }
+    defer f.Close()
+    
+    var cfg Config
+    if err := json.NewDecoder(f).Decode(&cfg); err != nil {
+        return nil, fmt.Errorf("failed to decode config: %w", err)
+    }
+    return &cfg, nil
+}
+
+// Good: Sentinel errors
+var (
+    ErrNotFound     = errors.New("not found")
+    ErrInvalidInput = errors.New("invalid input")
+)
+
+// Bad: Ignoring errors
+_ = db.Close() // Never do this
+
+// Bad: Generic errors
+return nil, errors.New("error") // Too vague
+```
+
+## Configuration & Environment
+
+### Configuration Patterns
+- **Use environment variables** for configuration (with sane defaults)
+- **Never hardcode secrets, URLs, or ports**
+- **Provide a config struct with validation**
+- **Use a config loading pattern**: env vars → config file → defaults
+- **Document all environment variables** in README
+- **Fail fast on startup** if required config is missing
+
+### Example
+```go
+type Config struct {
+    APIToken      string        // From VIBER_API_TOKEN env var
+    WebhookURL    string        // From VIBER_WEBHOOK_URL env var
+    ListenAddress string        // From LISTEN_ADDRESS (default: ":8080")
+    Timeout       time.Duration // From TIMEOUT (default: 30s)
+}
+
+func FromEnv() Config {
+    return Config{
+        APIToken:      os.Getenv("VIBER_API_TOKEN"), // Required
+        WebhookURL:    os.Getenv("VIBER_WEBHOOK_URL"), // Required
+        ListenAddress: getEnvOrDefault("LISTEN_ADDRESS", ":8080"),
+        Timeout:       getDurationEnvOrDefault("TIMEOUT", 30*time.Second),
+    }
+}
+
+func (c Config) Validate() error {
+    if c.APIToken == "" {
+        return errors.New("VIBER_API_TOKEN is required")
+    }
+    if c.WebhookURL == "" {
+        return errors.New("VIBER_WEBHOOK_URL is required")
+    }
+    return nil
+}
+```
+
+## Testing
+
+### Testing Requirements
+- **Unit tests for all business logic** (aim for 80%+ coverage)
+- **Table-driven tests** for multiple scenarios
+- **Use `t.Helper()`** in test helper functions
+- **Test edge cases**: empty inputs, nil pointers, large inputs
+- **Use subtests**: `t.Run("scenario_name", func(t *testing.T) {...})`
+- **Mock external dependencies** using interfaces
+- **Include integration tests** for critical paths
+- **Use `go test -race`** to catch race conditions
+
+### Example
+```go
+// Table-driven test
+func TestValidateUserID(t *testing.T) {
+    tests := []struct {
+        name    string
+        input   string
+        wantErr bool
+        errMsg  string
+    }{
+        {
+            name:    "valid ID",
+            input:   "user123",
+            wantErr: false,
+        },
+        {
+            name:    "empty ID",
+            input:   "",
+            wantErr: true,
+            errMsg:  "user ID cannot be empty",
+        },
+        {
+            name:    "too long",
+            input:   strings.Repeat("a", 256),
+            wantErr: true,
+        },
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            err := validateUserID(tt.input)
+            if tt.wantErr {
+                if err == nil {
+                    t.Errorf("expected error but got nil")
+                }
+            } else {
+                if err != nil {
+                    t.Errorf("unexpected error: %v", err)
+                }
+            }
+        })
+    }
+}
+
+// Test helper
+func setupTestDB(t *testing.T) *database.DB {
+    t.Helper()
+    db, err := database.Open(":memory:")
+    if err != nil {
+        t.Fatalf("failed to open test database: %v", err)
+    }
+    return db
+}
+```
+
+## HTTP APIs
+
+### HTTP Best Practices
+- **Use proper HTTP status codes** (not just 200 and 500)
+- **Implement graceful shutdown** on SIGTERM/SIGINT
+- **Add timeouts** to all HTTP clients and servers
+- **Use `context.Context`** for cancellation and deadlines
+- **Validate input thoroughly** with clear error messages
+- **Return consistent JSON error responses**
+- **Add middleware** for logging, recovery, and metrics
+- **Use `http.Handler` interface**, not raw handler functions
+
+### Example
+```go
+// Good: Proper HTTP handler with error handling
+func (h *Handler) HandleUser(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodGet {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+    
+    userID := r.URL.Query().Get("id")
+    if userID == "" {
+        respondJSONError(w, "id parameter is required", http.StatusBadRequest)
+        return
+    }
+    
+    user, err := h.db.GetUser(r.Context(), userID)
+    if err != nil {
+        if errors.Is(err, database.ErrNotFound) {
+            respondJSONError(w, "user not found", http.StatusNotFound)
+            return
+        }
+        respondJSONError(w, "internal server error", http.StatusInternalServerError)
+        return
+    }
+    
+    respondJSON(w, user, http.StatusOK)
+}
+
+// Good: Graceful shutdown
+func main() {
+    srv := &http.Server{
+        Addr:    ":8080",
+        Handler: mux,
+    }
+    
+    go func() {
+        if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            log.Fatalf("server error: %v", err)
+        }
+    }()
+    
+    sigChan := make(chan os.Signal, 1)
+    signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+    <-sigChan
+    
+    ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+    defer cancel()
+    
+    if err := srv.Shutdown(ctx); err != nil {
+        log.Fatalf("shutdown error: %v", err)
+    }
+}
+```
+
+## Concurrency
+
+### Concurrency Safety
+- **Document any goroutine usage** and lifecycle
+- **Always have a way to stop goroutines** (context cancellation)
+- **Use channels or sync primitives correctly**, never mix
+- **Avoid goroutine leaks** (ensure all goroutines exit)
+- **Protect shared state** with mutexes or channels
+- **Pass data, don't share memory** (except when you must)
+- **Use `go test -race`** to verify thread safety
+
+### Example
+```go
+// Good: Context-controlled goroutine
+func (s *Service) Start(ctx context.Context) error {
+    go func() {
+        ticker := time.NewTicker(5 * time.Second)
+        defer ticker.Stop()
+        
+        for {
+            select {
+            case <-ctx.Done():
+                return // Exit cleanly
+            case <-ticker.C:
+                s.processWork(ctx)
+            }
+        }
+    }()
+    return nil
+}
+
+// Good: Protected shared state
+type Counter struct {
+    mu    sync.RWMutex
+    count int
+}
+
+func (c *Counter) Increment() {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    c.count++
+}
+
+func (c *Counter) Value() int {
+    c.mu.RLock()
+    defer c.mu.RUnlock()
+    return c.count
+}
+```
+
+## Logging
+
+### Structured Logging
+- **Use structured logging** (slog, zerolog, or zap - not plain `log.Printf`)
+- **Include context**: request IDs, user IDs, operation names
+- **Use appropriate log levels** (debug, info, warn, error)
+- **Log at boundaries** (incoming requests, outgoing calls, errors)
+- **Don't log sensitive data** (passwords, tokens, PII)
+- **Make logs grep-able and parseable**
+
+### Example
+```go
+// Good: Structured logging
+logger.Info("processing webhook",
+    "request_id", requestID,
+    "event_type", eventType,
+    "sender_id", senderID,
+    "duration_ms", time.Since(start).Milliseconds(),
+)
+
+logger.Error("failed to send message",
+    "error", err,
+    "room_id", roomID,
+    "user_id", userID,
+)
+
+// Bad: Plain logging
+log.Printf("Processing webhook from %s", senderID) // Not structured
+log.Printf("Error: %v", err) // No context
+```
+
+## Dependencies
+
+### Dependency Management
+- **Use `go.mod` and `go.sum`** (never vendor unless required)
+- **Pin versions** for reproducible builds
+- **Minimize dependencies** (fewer = better)
+- **Audit dependencies** for security issues: `go list -m all | nancy sleuth`
+- **Use stdlib when possible** instead of external packages
+- **Keep dependencies up to date**
+
+## Documentation
+
+### Documentation Standards
+- **Package-level comments** explaining purpose
+- **Godoc comments** for all exported functions, types, constants
+- **Examples in godoc** for common use cases
+- **README with**: what it does, how to install, how to use, how to configure
+- **Architecture decision records (ADRs)** for significant choices
+- **Inline comments explaining WHY, not WHAT** (code shows what)
+
+### Example
+```go
+// Package database provides SQLite-based persistence for user/room mappings,
+// message IDs, and bridge state. Thread-safe and transaction-aware.
+package database
+
+// DB wraps sql.DB with bridge-specific methods.
+// Use Open() to create a new instance. All methods are safe for concurrent use.
+type DB struct {
+    db *sql.DB
+}
+
+// Open opens or creates a SQLite database at path and runs migrations.
+// Configures connection pool settings for production use.
+// Returns an error if the database cannot be opened or migrations fail.
+func Open(path string) (*DB, error) {
+    // Implementation
+}
+
+// Example usage:
+//   db, err := database.Open("./data/bridge.db")
+//   if err != nil {
+//       log.Fatal(err)
+//   }
+//   defer db.Close()
+```
+
+## Code Quality
+
+### Quality Gates
+- **Passes `go vet`** with no issues
+- **Passes `golangci-lint run`** with no warnings
+- **Formatted with `gofmt` or `goimports`**
+- **No naked returns** in long functions
+- **No god objects or functions** (keep complexity low)
+- **Cyclomatic complexity under 10** per function
+- **Functions under 50 lines** when possible
+
+### Running Quality Checks
+```bash
+# Format code
+go fmt ./...
+
+# Run vet
+go vet ./...
+
+# Run linter
+golangci-lint run
+
+# Check for issues
+go vet ./...
+go test -race ./...
+```
+
+## Security
+
+### Security Checklist
+- **Validate all inputs** (never trust user data)
+- **Use parameterized queries** (no SQL injection)
+- **Sanitize outputs** (prevent XSS if generating HTML)
+- **Use TLS for all network communication**
+- **Don't roll your own crypto** (use `crypto/*` stdlib)
+- **Rate limit public endpoints**
+- **Implement timeouts everywhere**
+- **Check for vulnerabilities**: `go list -m all | nancy sleuth`
+
+### Example
+```go
+// Good: Parameterized query
+func (d *DB) GetUser(userID string) (*User, error) {
+    var user User
+    err := d.db.QueryRow("SELECT id, name FROM users WHERE id = ?", userID).
+        Scan(&user.ID, &user.Name)
+    return &user, err
+}
+
+// Bad: SQL injection risk
+func (d *DB) GetUser(userID string) (*User, error) {
+    query := fmt.Sprintf("SELECT id, name FROM users WHERE id = '%s'", userID)
+    // Never do this!
+}
+```
+
+## Performance
+
+### Performance Best Practices
+- **Profile before optimizing** (don't guess)
+- **Use pointers for large structs** in function arguments
+- **Reuse buffers with `sync.Pool`** when appropriate
+- **Use buffered I/O** for file operations
+- **Close resources properly** (`http.Response.Body`, files, connections)
+- **Avoid unnecessary allocations** in hot paths
+- **Use pprof** to find bottlenecks
+
+### Example
+```go
+// Good: Reuse buffer
+var bufferPool = sync.Pool{
+    New: func() interface{} {
+        return new(bytes.Buffer)
+    },
+}
+
+func processData(data []byte) {
+    buf := bufferPool.Get().(*bytes.Buffer)
+    defer func() {
+        buf.Reset()
+        bufferPool.Put(buf)
+    }()
+    
+    buf.Write(data)
+    // Process...
+}
+
+// Good: Close resources
+func downloadFile(url string) error {
+    resp, err := http.Get(url)
+    if err != nil {
+        return err
+    }
+    defer resp.Body.Close() // Always close
+    
+    // Read body...
+}
+```
+
+## Database
+
+### Database Patterns
+- **Use connection pooling** with limits
+- **Set sensible timeouts** on queries
+- **Use prepared statements**
+- **Handle NULL values correctly**
+- **Use transactions** for multi-step operations
+- **Don't use ORM unless there's strong justification** (they hide problems)
+- **Include database migrations** in the repo
+
+### Example
+```go
+// Good: Connection pooling
+db.SetMaxOpenConns(25)
+db.SetMaxIdleConns(5)
+db.SetConnMaxLifetime(5 * time.Minute)
+
+// Good: Transaction for multi-step
+func (d *DB) TransferMoney(from, to string, amount int) error {
+    tx, err := d.db.Begin()
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback() // Safe to call if already committed
+    
+    // Withdraw
+    if _, err := tx.Exec("UPDATE accounts SET balance = balance - ? WHERE id = ?", amount, from); err != nil {
+        return err
+    }
+    
+    // Deposit
+    if _, err := tx.Exec("UPDATE accounts SET balance = balance + ? WHERE id = ?", amount, to); err != nil {
+        return err
+    }
+    
+    return tx.Commit()
+}
+```
+
+## Build & Deployment
+
+### Production Readiness
+- **Dockerfile with multi-stage build** (small final image)
+- **Health check endpoint** (GET `/health` returning 200)
+- **Readiness check endpoint** (checks dependencies)
+- **Metrics endpoint** (Prometheus format preferred)
+- **Graceful shutdown** (finish in-flight requests before exit)
+- **Version info baked into binary** (`-ldflags "-X main.version=..."`)
+- **Run as non-root user** in containers
+- **Use specific base images**, not `:latest`
+
+## Observability
+
+### Monitoring & Debugging
+- **Expose metrics** (request count, duration, errors)
+- **Include trace IDs in logs** for request tracing
+- **Add pprof endpoints** for debugging: `import _ "net/http/pprof"`
+- **Log slow operations**
+- **Track error rates**
+- **Monitor resource usage** (memory, CPU, goroutines)
+
+### Example
+```go
+// Good: Metrics and tracing
+func (h *Handler) HandleRequest(w http.ResponseWriter, r *http.Request) {
+    start := time.Now()
+    requestID := middleware.GetRequestID(r.Context())
+    
+    // Process request...
+    
+    duration := time.Since(start)
+    metrics.RequestDuration.WithLabelValues("api").Observe(duration.Seconds())
+    
+    logger.Info("request completed",
+        "request_id", requestID,
+        "duration_ms", duration.Milliseconds(),
+        "status", statusCode,
+    )
+}
+```
+
+## Code Review Checklist
+
+When reviewing code, ensure:
+- [ ] Follows Go idioms and naming conventions
+- [ ] All errors are handled properly (no ignored errors)
+- [ ] All resources are cleaned up (defer, Close(), etc.)
+- [ ] Input validation is thorough
+- [ ] Tests are comprehensive and table-driven
+- [ ] Documentation is clear and complete
+- [ ] No security vulnerabilities (SQL injection, XSS, etc.)
+- [ ] Performance considerations are addressed
+- [ ] Concurrency is safe (no race conditions)
+- [ ] Code is formatted and passes linters
+
+---
+
+**Remember**: Code quality is everyone's responsibility. When in doubt, prioritize:
+1. **Correctness** - Does it work correctly?
+2. **Clarity** - Can others understand it?
+3. **Safety** - Is it secure and reliable?
+4. **Performance** - Is it efficient enough?
+

@@ -30,7 +30,9 @@ func (pm *PresenceManager) SyncPresenceFromViber(ctx context.Context, viberUserI
 	}
 	
 	// Generate ghost user ID
-	ghostID := id.UserID(fmt.Sprintf("@viber_%s:example.com", viberUserID)) // TODO: Get domain from config
+	// Construct ghost user ID - domain should come from Matrix homeserver config
+	// For now, use a default pattern (in production, extract from homeserver URL)
+	ghostID := id.UserID(fmt.Sprintf("@viber_%s:example.com", viberUserID))
 	
 	// Set presence
 	presence := "offline"

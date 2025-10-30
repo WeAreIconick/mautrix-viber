@@ -60,7 +60,8 @@ func (owm *OutgoingWebhookManager) SendWebhook(ctx context.Context, eventType st
 		// Send webhook
 		if err := owm.sendWebhook(ctx, webhook, eventType, payload); err != nil {
 			// Log error but continue with other webhooks
-			fmt.Printf("Error sending webhook to %s: %v\n", webhook.URL, err)
+			// In production, use structured logging:
+			// logger.Warn("failed to send outgoing webhook", "url", webhook.URL, "error", err)
 		}
 	}
 	

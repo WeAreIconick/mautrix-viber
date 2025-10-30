@@ -2,6 +2,19 @@
 
 Thank you for your interest in contributing! This document provides guidelines for contributing to the project.
 
+## ⚠️ Important: Read Coding Standards First
+
+**Before making any changes, please read [`.cursorrules`](.cursorrules)**. This file defines our comprehensive coding standards, best practices, and architectural patterns. All code must follow these guidelines.
+
+Key areas covered:
+- Go idioms and best practices
+- Error handling patterns
+- Testing requirements (80%+ coverage target)
+- Security checklist
+- Code quality gates (go vet, golangci-lint)
+- Performance best practices
+- And much more...
+
 ## Getting Started
 
 1. Fork the repository

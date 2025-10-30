@@ -59,13 +59,19 @@ func (sm *SearchManager) SearchMessages(ctx context.Context, query string, limit
 }
 
 // SearchBySender searches for messages from a specific sender.
+// This requires message content storage in the database.
 func (sm *SearchManager) SearchBySender(ctx context.Context, senderID string, limit int) ([]SearchResult, error) {
 	if sm.db == nil {
 		return nil, fmt.Errorf("database not configured")
 	}
 	
-	// TODO: Query database for messages from sender
-	return nil, fmt.Errorf("not implemented")
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	
+	// This feature requires message content storage in database
+	// Query would be: SELECT * FROM messages WHERE sender_id = ? LIMIT ?
+	return nil, fmt.Errorf("sender search requires message content storage in database")
 }
 
 // SearchByDateRange searches for messages in a date range.

@@ -148,12 +148,76 @@ func (d *DB) GetViberUser(viberID string) (*ViberUser, error) {
 
 // LinkViberUser links a Viber user to a Matrix user ID.
 func (d *DB) LinkViberUser(viberID, matrixUserID string) error {
+	if viberID == "" {
+		return fmt.Errorf("viber_id cannot be empty")
+	}
 	_, err := d.db.Exec(`
 		UPDATE viber_users
 		SET matrix_user_id = ?, updated_at = CURRENT_TIMESTAMP
 		WHERE viber_id = ?
 	`, matrixUserID, viberID)
 	return err
+}
+
+// UnlinkMatrixUser removes the Matrix user link from a Viber user.
+func (d *DB) UnlinkMatrixUser(matrixUserID string) error {
+	_, err := d.db.Exec(`
+		UPDATE viber_users
+		SET matrix_user_id = NULL, updated_at = CURRENT_TIMESTAMP
+		WHERE matrix_user_id = ?
+	`, matrixUserID)
+	return err
+}
+
+// GetViberUserByMatrixID retrieves a Viber user by their linked Matrix user ID.
+func (d *DB) GetViberUserByMatrixID(matrixUserID string) (*ViberUser, error) {
+	var user ViberUser
+	var matrixUserIDNullable sql.NullString
+	err := d.db.QueryRow(`
+		SELECT viber_id, viber_name, matrix_user_id, created_at, updated_at
+		FROM viber_users
+		WHERE matrix_user_id = ?
+	`, matrixUserID).Scan(&user.ViberID, &user.ViberName, &matrixUserIDNullable, &user.CreatedAt, &user.UpdatedAt)
+	
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	
+	if matrixUserIDNullable.Valid {
+		user.MatrixUserID = &matrixUserIDNullable.String
+	}
+	return &user, nil
+}
+
+// ListLinkedUsers returns all users with linked Matrix accounts.
+func (d *DB) ListLinkedUsers() ([]*ViberUser, error) {
+	rows, err := d.db.Query(`
+		SELECT viber_id, viber_name, matrix_user_id, created_at, updated_at
+		FROM viber_users
+		WHERE matrix_user_id IS NOT NULL
+		ORDER BY updated_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var users []*ViberUser
+	for rows.Next() {
+		var user ViberUser
+		var matrixUserID sql.NullString
+		if err := rows.Scan(&user.ViberID, &user.ViberName, &matrixUserID, &user.CreatedAt, &user.UpdatedAt); err != nil {
+			return nil, err
+		}
+		if matrixUserID.Valid {
+			user.MatrixUserID = &matrixUserID.String
+		}
+		users = append(users, &user)
+	}
+	return users, rows.Err()
 }
 
 // CreateRoomMapping creates a mapping between a Viber chat and Matrix room.
@@ -193,6 +257,36 @@ func (d *DB) GetViberChatID(matrixRoomID string) (string, error) {
 		return "", nil
 	}
 	return viberChatID, err
+}
+
+// ListRoomMappings returns all room mappings.
+func (d *DB) ListRoomMappings() ([]RoomMapping, error) {
+	rows, err := d.db.Query(`
+		SELECT viber_chat_id, matrix_room_id, created_at
+		FROM room_mappings
+		ORDER BY created_at DESC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var mappings []RoomMapping
+	for rows.Next() {
+		var m RoomMapping
+		if err := rows.Scan(&m.ViberChatID, &m.MatrixRoomID, &m.CreatedAt); err != nil {
+			return nil, err
+		}
+		mappings = append(mappings, m)
+	}
+	return mappings, rows.Err()
+}
+
+// RoomMapping represents a room mapping in the database.
+type RoomMapping struct {
+	ViberChatID  string
+	MatrixRoomID string
+	CreatedAt    time.Time
 }
 
 // StoreMessageMapping stores a mapping between Viber message ID and Matrix event ID.

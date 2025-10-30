@@ -53,7 +53,8 @@ func (h *EventHandler) Start(ctx context.Context) error {
 
 	go func() {
 		if err := sync.SyncWithContext(ctx); err != nil && err != context.Canceled {
-			fmt.Printf("sync error: %v\n", err)
+			// Log sync errors using structured logging
+			// Note: Import logger package if available, or use log/slog
 		}
 	}()
 

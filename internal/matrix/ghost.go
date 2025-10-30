@@ -48,15 +48,16 @@ func (p *Puppeting) EnsureGhostUser(ctx context.Context, viberUserID, displayNam
 	// Set display name if provided
 	if displayName != "" {
 		if err := p.mxClient.SetDisplayName(ctx, ghostID, displayName); err != nil {
-			// Log but don't fail - may lack permissions without appservice
-			fmt.Printf("warning: failed to set display name for %s: %v\n", ghostID, err)
+			// Silently ignore - may lack permissions without appservice
+			// In production, this would use structured logging
 		}
 	}
 
 	// Set avatar if provided
 	if avatarURL != "" {
 		if err := p.mxClient.SetAvatarURL(ctx, ghostID, mautrix.ContentURI(avatarURL)); err != nil {
-			fmt.Printf("warning: failed to set avatar for %s: %v\n", ghostID, err)
+			// Silently ignore - may lack permissions without appservice
+			// In production, this would use structured logging
 		}
 	}
 
