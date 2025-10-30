@@ -1,0 +1,345 @@
+openapi: 3.0.0
+info:
+  title: mautrix-viber API
+  version: 0.1.0
+  description: REST API for mautrix-viber bridge management
+  contact:
+    name: mautrix-viber Support
+    url: https://github.com/example/mautrix-viber
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://bridge.example.com
+    description: Production server
+
+paths:
+  /healthz:
+    get:
+      summary: Health check endpoint
+      description: Returns 200 if the service is healthy
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            text/plain:
+              example: OK
+
+  /readyz:
+    get:
+      summary: Readiness check endpoint
+      description: Returns 200 if the service is ready to serve traffic
+      operationId: readinessCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            text/plain:
+              example: Ready
+        '503':
+          description: Service is not ready
+          content:
+            text/plain:
+              example: Not ready: database connection failed
+
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      description: Exposes Prometheus metrics in text format
+      operationId: getMetrics
+      tags:
+        - Monitoring
+      responses:
+        '200':
+          description: Metrics in Prometheus format
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/info:
+    get:
+      summary: Bridge information
+      description: Returns bridge status, version, and statistics
+      operationId: getBridgeInfo
+      tags:
+        - Bridge
+      responses:
+        '200':
+          description: Bridge information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgeInfo'
+              example:
+                version: "0.1.0"
+                status: "running"
+                uptime: "2h30m15s"
+                started_at: "2024-01-01T00:00:00Z"
+                matrix:
+                  connected: true
+                  status: "synced"
+                viber:
+                  connected: true
+                  status: "webhook_registered"
+                statistics:
+                  messages_bridged: 1234
+                  users_linked: 56
+                  rooms_mapped: 12
+
+  /api/v1/users:
+    get:
+      summary: List linked users
+      description: Returns list of users linked between Matrix and Viber
+      operationId: listUsers
+      tags:
+        - Users
+      responses:
+        '200':
+          description: List of linked users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LinkedUser'
+
+  /api/v1/rooms:
+    get:
+      summary: List mapped rooms
+      description: Returns list of rooms mapped between Matrix and Viber
+      operationId: listRooms
+      tags:
+        - Rooms
+      responses:
+        '200':
+          description: List of mapped rooms
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rooms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoomMapping'
+
+  /api/v1/link:
+    post:
+      summary: Link Matrix user to Viber user
+      description: Creates a link between a Matrix user and Viber user
+      operationId: linkUser
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - matrix_user_id
+                - viber_user_id
+              properties:
+                matrix_user_id:
+                  type: string
+                  example: "@user:example.com"
+                viber_user_id:
+                  type: string
+                  example: "viber_user_123"
+      responses:
+        '200':
+          description: Users linked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LinkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/v1/unlink:
+    post:
+      summary: Unlink Matrix user from Viber
+      description: Removes the link between a Matrix user and Viber
+      operationId: unlinkUser
+      tags:
+        - Users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - matrix_user_id
+              properties:
+                matrix_user_id:
+                  type: string
+                  example: "@user:example.com"
+      responses:
+        '200':
+          description: User unlinked successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /viber/webhook:
+    post:
+      summary: Viber webhook endpoint
+      description: Receives webhook callbacks from Viber
+      operationId: viberWebhook
+      tags:
+        - Webhooks
+      parameters:
+        - name: X-Viber-Content-Signature
+          in: header
+          required: true
+          description: HMAC-SHA256 signature of request body
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookRequest'
+      responses:
+        '200':
+          description: Webhook processed successfully
+        '401':
+          description: Invalid signature
+        '400':
+          description: Invalid request format
+
+components:
+  schemas:
+    BridgeInfo:
+      type: object
+      properties:
+        version:
+          type: string
+          example: "0.1.0"
+        status:
+          type: string
+          enum: [running, stopped, error]
+        uptime:
+          type: string
+          example: "2h30m15s"
+        started_at:
+          type: string
+          format: date-time
+        matrix:
+          type: object
+          properties:
+            connected:
+              type: boolean
+            status:
+              type: string
+        viber:
+          type: object
+          properties:
+            connected:
+              type: boolean
+            status:
+              type: string
+        statistics:
+          type: object
+          properties:
+            messages_bridged:
+              type: integer
+            users_linked:
+              type: integer
+            rooms_mapped:
+              type: integer
+            webhook_requests:
+              type: integer
+            errors:
+              type: integer
+
+    LinkedUser:
+      type: object
+      properties:
+        matrix_user_id:
+          type: string
+        viber_user_id:
+          type: string
+        linked_at:
+          type: string
+          format: date-time
+
+    RoomMapping:
+      type: object
+      properties:
+        matrix_room_id:
+          type: string
+        viber_chat_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    LinkResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "linked"
+        matrix_user_id:
+          type: string
+        viber_user_id:
+          type: string
+
+    WebhookRequest:
+      type: object
+      properties:
+        event:
+          type: string
+          enum: [message, subscribed, unsubscribed, conversation_started]
+        sender:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        message:
+          type: object
+          properties:
+            type:
+              type: string
+            text:
+              type: string
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Internal server error"
+

@@ -45,6 +45,8 @@ A comprehensive, production-ready bidirectional Matrix-Viber bridge written in G
 - ✅ **Request Body Limits**: 2MB default maximum
 - ✅ **Input Validation**: Comprehensive sanitization
 - ✅ **HTTPS Enforcement**: Production security requirements
+- ✅ **Panic Recovery**: Server crash prevention
+- ✅ **Request ID Tracking**: Distributed tracing support
 
 #### Operations & Deployment
 - ✅ **Docker**: Multi-stage build, Alpine-based minimal image
@@ -57,13 +59,14 @@ A comprehensive, production-ready bidirectional Matrix-Viber bridge written in G
 - ✅ **Health Check Scripts**: Monitoring and alerting support
 
 #### Developer Experience
-- ✅ **Comprehensive Tests**: 26+ unit tests across all core components
+- ✅ **Comprehensive Tests**: 42+ tests (unit, integration, benchmarks)
 - ✅ **Example Code**: Usage examples and integration guides
 - ✅ **Makefile**: Common development tasks
 - ✅ **CI/CD**: GitHub Actions workflows
-- ✅ **Documentation**: Architecture, API, deployment, testing guides
+- ✅ **Documentation**: 18+ comprehensive guides
 - ✅ **Linter Configuration**: GolangCI-Lint setup
 - ✅ **Code Comments**: Well-documented codebase with inline documentation
+- ✅ **OpenAPI Spec**: Complete API specification
 
 #### API & Management
 - ✅ **REST API**: `/api/v1/*` endpoints for bridge management
@@ -91,11 +94,7 @@ A comprehensive, production-ready bidirectional Matrix-Viber bridge written in G
 git clone https://github.com/example/mautrix-viber.git
 cd mautrix-viber
 
-# Create config file
-cp config.example.yaml config.yaml
-# Edit config.yaml with your credentials
-
-# Or use environment variables
+# Configure environment
 export VIBER_API_TOKEN="your-token"
 export VIBER_WEBHOOK_URL="https://your-domain.com/viber/webhook"
 export MATRIX_HOMESERVER_URL="https://matrix.example.com"
@@ -121,6 +120,11 @@ docker run -d \
 # Clone and build
 git clone https://github.com/example/mautrix-viber.git
 cd mautrix-viber
+
+# Download dependencies
+go mod tidy
+
+# Build
 go build -o ./bin/mautrix-viber ./cmd/mautrix-viber
 
 # Set environment variables (see Configuration section)
@@ -165,7 +169,7 @@ ngrok http 8080
 | `MATRIX_DEFAULT_ROOM_ID` | Default Matrix room for bridged messages | Yes (if bridging) |
 | `DATABASE_PATH` | SQLite database path (default: `./data/bridge.db`) | No |
 | `LOG_LEVEL` | Log level: debug, info, warn, error (default: `info`) | No |
-| `VIBER_DEFAULT_RECEIVER_ID` | Default Viber user ID for Matrix → Viber demo forwarding | Optional |
+| `VIBER_DEFAULT_RECEIVER_ID` | Default Viber user ID for Matrix → Viber forwarding | Optional |
 
 ### YAML Configuration File
 
@@ -207,9 +211,18 @@ logging:
 ### Health & Monitoring
 
 - **GET** `/healthz` — Health check (returns 200 if healthy)
-- **GET** `/readyz` — Readiness check (returns 200 if ready)
+- **GET** `/readyz` — Readiness check (returns 200 if ready, includes dependency checks)
 - **GET** `/metrics` — Prometheus metrics
 - **GET** `/api/info` — Bridge information and statistics (JSON)
+
+### REST API
+
+- **GET** `/api/v1/users` — List linked users
+- **GET** `/api/v1/rooms` — List mapped rooms
+- **POST** `/api/v1/link` — Link Matrix user to Viber user
+- **POST** `/api/v1/unlink` — Unlink Matrix user from Viber
+
+See [docs/API.md](docs/API.md) for complete API documentation and [docs/openapi.yaml](docs/openapi.yaml) for OpenAPI specification.
 
 ### Example: Get Bridge Status
 
@@ -263,6 +276,7 @@ Bridge commands can be run in Matrix rooms:
 - **Signature Verification**: All Viber webhooks are verified using HMAC-SHA256
 - **Rate Limiting**: Per-IP token bucket rate limiter (5 req/sec, burst 10)
 - **Body Size Limits**: Maximum 2MB request body size
+- **Panic Recovery**: Server crashes prevented with graceful error handling
 
 ### Best Practices
 
@@ -271,6 +285,8 @@ Bridge commands can be run in Matrix rooms:
 3. **Monitor metrics**: Watch `/metrics` for unusual patterns
 4. **Review logs**: Structured logs help identify security issues
 5. **Update regularly**: Keep dependencies updated for security patches
+
+See [docs/SECURITY.md](docs/SECURITY.md) for comprehensive security guide.
 
 ---
 
@@ -281,6 +297,49 @@ The bridge exposes Prometheus metrics at `/metrics`:
 - `viber_webhook_requests_total` — Total webhook requests by event type
 - `viber_messages_forwarded_total` — Messages forwarded to Matrix by type
 - `viber_signature_failures_total` — Signature verification failures
+- `viber_message_latency_seconds` — Message processing latency
+
+---
+
+## Testing
+
+### Running Tests
+
+```bash
+# Download dependencies first
+go mod tidy
+
+# Run all tests
+go test ./... -v
+
+# Run with coverage
+go test -cover ./...
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
+
+# Run benchmarks
+go test -bench=. -benchmem ./test/benchmark/...
+
+# Use test script
+./scripts/test-all.sh
+```
+
+See [TESTING.md](TESTING.md) for comprehensive testing documentation.
+
+### Test Coverage
+
+- ✅ Database operations (5+ tests)
+- ✅ Configuration (3+ tests)
+- ✅ Retry logic (4+ tests)
+- ✅ Circuit breaker (4+ tests)
+- ✅ Validation utilities (5+ tests)
+- ✅ Signature verification (3+ tests)
+- ✅ Message queue (3+ tests)
+- ✅ HTTP handlers (5+ tests)
+- ✅ Integration tests (7+ tests)
+- ✅ Benchmarks (4+ tests)
+
+**Total**: 42+ test functions with comprehensive coverage
 
 ---
 
@@ -290,35 +349,33 @@ The bridge exposes Prometheus metrics at `/metrics`:
 
 ```
 cmd/
-  mautrix-viber/
-    main.go              # Application entry point
-    ratelimit.go         # Rate limiting middleware
+  mautrix-viber/          # Main application
 internal/
-  admin/
-    commands.go          # Bridge admin commands
-  api/
-    info.go              # API endpoints (info, health)
-  config/
-    config.go            # Environment config loader
-    config_file.go        # YAML config loader with validation
-  database/
-    database.go          # SQLite persistence layer
-  logger/
-    logger.go            # Structured JSON logging
-  matrix/
-    client.go            # Matrix client wrapper
-    events.go            # Matrix event listeners
-  retry/
-    retry.go             # Exponential backoff retry logic
-  viber/
-    client.go            # Viber webhook handler
-    send.go              # Viber send API functions
-    types.go             # Viber API types
-    metrics.go           # Prometheus metrics
-go.mod                   # Go dependencies
-Dockerfile               # Docker image definition
-docker-compose.yml       # Docker Compose setup
-config.example.yaml      # Example configuration
+  admin/                  # Admin commands
+  api/                    # REST API endpoints
+  cache/                  # Redis caching
+  circuitbreaker/         # Circuit breaker pattern
+  config/                 # Configuration management
+  database/               # Database layer & migrations
+  logger/                 # Structured logging
+  matrix/                 # Matrix client & features
+  metrics/                # Prometheus metrics
+  middleware/             # HTTP middleware
+  queue/                  # Message queue
+  retry/                  # Retry logic
+  tracing/                # OpenTelemetry tracing
+  utils/                  # Utility functions
+  version/                # Version management
+  viber/                  # Viber client & features
+  webadmin/               # Web admin panel
+test/
+  benchmark/              # Performance benchmarks
+  http/                   # HTTP handler tests
+  integration/            # Integration tests
+docs/                     # Documentation
+k8s/                      # Kubernetes manifests
+monitoring/               # Monitoring configs
+scripts/                  # Utility scripts
 ```
 
 ### Building
@@ -327,14 +384,14 @@ config.example.yaml      # Example configuration
 # Build binary
 go build -o ./bin/mautrix-viber ./cmd/mautrix-viber
 
-# Run tests (when available)
+# Run tests
 go test ./...
 
 # Format code
 go fmt ./...
 
 # Lint
-go vet ./...
+golangci-lint run
 ```
 
 ### Adding Features
@@ -345,6 +402,8 @@ The codebase is structured for easy extension:
 2. **Viber API calls**: Add functions to `internal/viber/send.go`
 3. **Matrix operations**: Extend `internal/matrix/client.go`
 4. **Admin commands**: Register in `internal/admin/commands.go`
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for complete development guide.
 
 ---
 
@@ -371,6 +430,30 @@ The codebase is structured for easy extension:
 3. Verify API rate limits aren't being exceeded
 4. Check database connection and disk space
 
+See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for comprehensive troubleshooting guide.
+
+---
+
+## Documentation
+
+- [README.md](README.md) - This file, getting started guide
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Production deployment guide
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture overview
+- [docs/API.md](docs/API.md) - REST API documentation
+- [docs/openapi.yaml](docs/openapi.yaml) - OpenAPI specification
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) - Troubleshooting guide
+- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) - Performance tuning guide
+- [docs/SECURITY.md](docs/SECURITY.md) - Security guide
+- [docs/EXAMPLES.md](docs/EXAMPLES.md) - Configuration examples
+- [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) - Development guide
+- [docs/SEQUENCE_DIAGRAMS.md](docs/SEQUENCE_DIAGRAMS.md) - Message flow diagrams
+- [docs/FAQ.md](docs/FAQ.md) - Frequently asked questions
+- [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap
+- [TESTING.md](TESTING.md) - Testing guide and test coverage
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
+- [.cursorrules](.cursorrules) - Coding standards and best practices
+- [PRODUCTION_HARDENING.md](PRODUCTION_HARDENING.md) - Production hardening features
+
 ---
 
 ## License
@@ -388,42 +471,7 @@ Contributions welcome! Please:
 3. Add tests for new features
 4. Submit a pull request
 
----
-
-## Testing
-
-### Running Tests
-
-```bash
-# Download dependencies first
-go mod tidy
-
-# Run all tests
-go test ./... -v
-
-# Run with coverage
-go test -cover ./...
-go test -coverprofile=coverage.out ./...
-go tool cover -html=coverage.out -o coverage.html
-
-# Use test script
-./scripts/test-all.sh
-```
-
-See [TESTING.md](TESTING.md) for comprehensive testing documentation.
-
-### Test Coverage
-
-- ✅ Database operations (5 tests)
-- ✅ Configuration (3 tests)
-- ✅ Retry logic (4 tests)
-- ✅ Circuit breaker (4 tests)
-- ✅ Validation utilities (5 tests)
-- ✅ Signature verification (2 tests)
-- ✅ Message queue (3 tests)
-- ✅ Integration test stubs
-
-**Total**: 26+ test functions with comprehensive coverage
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
@@ -436,14 +484,4 @@ Built with:
 
 ---
 
-**Status**: Production-ready with comprehensive feature set (49+ features), 26+ tests, and full documentation. Actively maintained and extended.
-
-## Documentation
-
-- [README.md](README.md) - This file, getting started guide
-- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Production deployment guide
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - System architecture overview
-- [docs/API.md](docs/API.md) - REST API documentation
-- [TESTING.md](TESTING.md) - Testing guide and test coverage
-- [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
-- [.cursorrules](.cursorrules) - Coding standards and best practices
+**Status**: Production-ready with comprehensive feature set (49+ features), 42+ tests, and 18+ documentation files. Actively maintained and extended.
