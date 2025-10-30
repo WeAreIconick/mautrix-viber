@@ -40,6 +40,8 @@ logs/
 *.swp
 *.swo
 *~
+*.code-workspace
+*.workspace
 
 # OS
 .DS_Store
