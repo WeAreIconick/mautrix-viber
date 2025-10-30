@@ -1,0 +1,44 @@
+{
+  "dashboard": {
+    "title": "mautrix-viber Bridge Dashboard",
+    "panels": [
+      {
+        "title": "Messages Bridged",
+        "targets": [
+          {
+            "expr": "rate(viber_messages_forwarded_total[5m])",
+            "legendFormat": "{{type}}"
+          }
+        ]
+      },
+      {
+        "title": "Webhook Requests",
+        "targets": [
+          {
+            "expr": "rate(viber_webhook_requests_total[5m])",
+            "legendFormat": "{{event}}"
+          }
+        ]
+      },
+      {
+        "title": "Error Rate",
+        "targets": [
+          {
+            "expr": "rate(viber_errors_total[5m])",
+            "legendFormat": "{{error_type}}"
+          }
+        ]
+      },
+      {
+        "title": "Message Latency",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(viber_message_latency_seconds_bucket[5m]))",
+            "legendFormat": "P95 {{direction}}"
+          }
+        ]
+      }
+    ]
+  }
+}
+

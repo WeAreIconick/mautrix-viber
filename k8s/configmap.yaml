@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mautrix-viber-config
+  namespace: mautrix-viber
+data:
+  viber-webhook-url: "https://bridge.example.com/viber/webhook"
+  matrix-homeserver-url: "https://matrix.example.com"
+  matrix-default-room-id: "!roomid:example.com"
+  listen-address: ":8080"
+  database-path: "/data/bridge.db"
+  log-level: "info"
+

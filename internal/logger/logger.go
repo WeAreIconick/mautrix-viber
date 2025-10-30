@@ -74,6 +74,11 @@ func WithContext(ctx context.Context) *slog.Logger {
 
 // WithFields returns a new logger with the given fields attached.
 func WithFields(fields ...slog.Attr) *slog.Logger {
-	return Default.With(fields...)
+	attrs := make([]any, len(fields)*2)
+	for i, f := range fields {
+		attrs[i*2] = f.Key
+		attrs[i*2+1] = f.Value
+	}
+	return Default.With(attrs...)
 }
 

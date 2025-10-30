@@ -1,0 +1,413 @@
+# mautrix-viber Cursor Rules
+
+This file contains coding standards, best practices, and guidelines for the mautrix-viber project.
+
+## Go Best Practices
+
+### Code Style
+
+1. **Follow Go idioms and conventions**
+   - Use `gofmt` for formatting
+   - Follow `golangci-lint` configuration
+   - Use `go vet` and `staticcheck` for analysis
+
+2. **Naming Conventions**
+   - Package names: lowercase, single word, descriptive
+   - Exported functions/types: PascalCase
+   - Unexported functions/types: camelCase
+   - Constants: PascalCase or SCREAMING_SNAKE_CASE
+   - Variables: camelCase
+   - Interfaces: End with `-er` when possible (e.g., `Reader`, `Writer`)
+
+3. **Error Handling**
+   ```go
+   // Always handle errors explicitly
+   if err != nil {
+       return fmt.Errorf("context: %w", err)
+   }
+   
+   // Use errors.Is() and errors.As() for error checking
+   if errors.Is(err, sql.ErrNoRows) {
+       // handle
+   }
+   
+   // Wrap errors with context using fmt.Errorf with %w
+   ```
+
+4. **Context Usage**
+   - Always accept `context.Context` as first parameter in functions that:
+     - Make network calls
+     - Access databases
+     - Perform I/O operations
+     - Can be cancelled or timed out
+   ```go
+   func DoSomething(ctx context.Context, param string) error {
+       // Check context cancellation
+       if err := ctx.Err(); err != nil {
+           return err
+       }
+       // ...
+   }
+   ```
+
+5. **Defer Usage**
+   - Use `defer` for cleanup (file closes, mutex unlocks, etc.)
+   - Be careful with defer in loops (wrap loop body in function)
+   ```go
+   defer resp.Body.Close()
+   defer db.Close()
+   ```
+
+6. **Initialization**
+   - Use struct literals when possible
+   - Initialize maps with `make()` if size known
+   - Use `var` for zero values, `:=` when assigning
+
+### Package Organization
+
+1. **Package Structure**
+   - One package per directory
+   - Keep packages focused and cohesive
+   - `internal/` for private code
+   - `cmd/` for main applications
+   - `pkg/` for reusable public code (if needed)
+
+2. **Import Organization**
+   ```go
+   import (
+       // Standard library
+       "context"
+       "fmt"
+       "net/http"
+       
+       // Third-party
+       "github.com/pkg/errors"
+       "go.uber.org/zap"
+       
+       // Internal
+       "github.com/example/mautrix-viber/internal/config"
+   )
+   ```
+
+3. **Avoid Circular Dependencies**
+   - Use interfaces to break cycles
+   - Consider dependency injection
+   - Move shared types to common package if needed
+
+### Documentation
+
+1. **Package Comments**
+   - Every package should have a package comment
+   - First sentence should be a summary
+   ```go
+   // Package database provides SQLite-based persistence for user/room mappings,
+   // message IDs, and bridge state. Thread-safe and transaction-aware.
+   package database
+   ```
+
+2. **Export Comments**
+   - All exported functions, types, variables, and constants must have comments
+   - Comments should start with the name of the exported item
+   ```go
+   // Open opens or creates a SQLite database at path and runs migrations.
+   func Open(path string) (*DB, error) {
+       // ...
+   }
+   ```
+
+3. **Code Comments**
+   - Explain "why", not "what"
+   - Comment complex logic and non-obvious behavior
+   - Use comments for TODOs with context
+   ```go
+   // TODO: Implement proper thread support when Matrix client supports it
+   // For now, prefix with "Re: " to indicate reply
+   ```
+
+### Testing
+
+1. **Test Structure**
+   - Tests in `*_test.go` files
+   - Test functions: `TestFunctionName`
+   - Benchmarks: `BenchmarkFunctionName`
+   - Examples: `ExampleFunctionName`
+   - Table-driven tests preferred for multiple cases
+
+2. **Test Organization**
+   ```go
+   func TestFeature(t *testing.T) {
+       // Arrange - Set up test data
+       testData := setupTest(t)
+       defer cleanup(testData)
+       
+       // Act - Execute the function
+       result, err := functionUnderTest(testData)
+       
+       // Assert - Verify results
+       if err != nil {
+           t.Fatalf("Expected no error, got %v", err)
+       }
+       if result != expected {
+           t.Errorf("Expected %v, got %v", expected, result)
+       }
+   }
+   ```
+
+3. **Test Helpers**
+   - Use `t.Helper()` in test helper functions
+   - Clean up resources with `defer` and `t.Cleanup()`
+   - Use temporary files/directories for test data
+
+### Concurrency
+
+1. **Goroutines**
+   - Always check if goroutines should be cancelled
+   - Use `sync.WaitGroup` to wait for goroutines
+   - Use channels for communication, mutexes for shared state
+
+2. **Channels**
+   - Close channels to signal completion
+   - Receiver checks if channel is closed: `v, ok := <-ch`
+   - Use buffered channels only when needed
+
+3. **Mutexes**
+   - Protect shared state
+   - Keep critical sections small
+   - Use `RWMutex` for read-heavy workloads
+   ```go
+   type SafeCounter struct {
+       mu    sync.RWMutex
+       value int
+   }
+   ```
+
+### Performance
+
+1. **Avoid Premature Optimization**
+   - Write clear, readable code first
+   - Profile before optimizing
+   - Use benchmarks to measure improvements
+
+2. **Common Optimizations**
+   - Pre-allocate slices with known capacity: `make([]T, 0, capacity)`
+   - Use `strings.Builder` for string concatenation in loops
+   - Avoid unnecessary allocations
+   - Use `sync.Pool` for frequently allocated objects
+
+3. **Database**
+   - Use prepared statements for repeated queries
+   - Use transactions for multiple operations
+   - Use connection pooling
+   - Set appropriate timeouts
+
+### Security
+
+1. **Input Validation**
+   - Validate and sanitize all user input
+   - Use validation utilities from `internal/utils`
+   - Check bounds and lengths
+   - Reject suspicious patterns
+
+2. **Secrets Management**
+   - Never commit secrets to version control
+   - Use environment variables or secret management systems
+   - Don't log sensitive data
+   - Use `context.Context` for request-scoped values
+
+3. **Web Security**
+   - Always verify webhook signatures
+   - Use HTTPS in production
+   - Implement rate limiting
+   - Set appropriate headers (CORS, CSP, etc.)
+   - Validate request sizes
+
+### Error Handling
+
+1. **Error Wrapping**
+   - Wrap errors with context: `fmt.Errorf("operation failed: %w", err)`
+   - Use `errors.Is()` and `errors.As()` for error checking
+   - Return errors, don't panic (except for programming errors)
+
+2. **Error Messages**
+   - Be descriptive and actionable
+   - Include relevant context
+   - Don't expose internal details to users
+   ```go
+   // Good
+   return fmt.Errorf("failed to send message to %s: %w", receiver, err)
+   
+   // Bad
+   return err
+   ```
+
+### Logging
+
+1. **Use Structured Logging**
+   - Use `log/slog` for structured JSON logging
+   - Include relevant context in log entries
+   - Use appropriate log levels: debug, info, warn, error
+
+2. **Log Best Practices**
+   ```go
+   slog.Info("message sent",
+       "user_id", userID,
+       "message_id", msgID,
+       "duration_ms", duration.Milliseconds(),
+   )
+   ```
+
+### Constants and Configuration
+
+1. **Magic Numbers**
+   - Use named constants instead of magic numbers
+   - Group related constants
+   ```go
+   const (
+       DefaultTimeout      = 15 * time.Second
+       MaxRequestSize      = 2 * 1024 * 1024 // 2MB
+       DefaultRateLimitRPS = 5
+   )
+   ```
+
+2. **Configuration**
+   - Load from environment variables
+   - Support configuration files (YAML, JSON)
+   - Validate configuration on startup
+   - Provide sensible defaults
+
+### Type Design
+
+1. **Interfaces**
+   - Keep interfaces small (1-3 methods)
+   - Accept interfaces, return structs
+   - Prefer composition over inheritance
+   ```go
+   type Reader interface {
+       Read(p []byte) (n int, err error)
+   }
+   ```
+
+2. **Structs**
+   - Use field tags for JSON, SQL, etc.
+   - Embed interfaces, not structs (unless intentional)
+   - Keep structs focused and cohesive
+
+3. **Zero Values**
+   - Make zero values useful
+   - Initialize with sensible defaults
+   - Use constructors when zero value isn't useful
+
+### HTTP Handlers
+
+1. **Handler Patterns**
+   ```go
+   func (h *Handler) HandleEndpoint(w http.ResponseWriter, r *http.Request) {
+       ctx := r.Context()
+       
+       // Parse request
+       // Validate input
+       // Process request
+       // Return response
+   }
+   ```
+
+2. **Error Responses**
+   - Use appropriate HTTP status codes
+   - Return JSON error responses
+   - Don't expose internal errors to clients
+
+### Database
+
+1. **SQL Best Practices**
+   - Use prepared statements
+   - Use transactions for multi-step operations
+   - Handle `sql.ErrNoRows` explicitly
+   - Use context for cancellation
+   - Set connection timeouts
+
+2. **Migrations**
+   - Version migrations
+   - Make migrations idempotent when possible
+   - Test migrations up and down
+
+### Project-Specific Guidelines
+
+1. **Bridge Operations**
+   - Always check if Matrix/Viber clients are configured
+   - Handle errors gracefully (log and continue when appropriate)
+   - Store message mappings for deduplication
+   - Use retry logic for external API calls
+
+2. **Webhook Handling**
+   - Always verify signatures
+   - Parse body once, reuse
+   - Handle all event types
+   - Store sender information in database
+
+3. **Message Forwarding**
+   - Format messages appropriately for target platform
+   - Handle media types correctly
+   - Preserve message relationships (replies, threads)
+   - Track message IDs for deduplication
+
+4. **Code Comments**
+   - Document exported functions
+   - Explain complex algorithms
+   - Add TODOs with context and issue references
+   - Comment on non-obvious behavior
+
+5. **Testing**
+   - Test all public APIs
+   - Use table-driven tests
+   - Test error cases
+   - Test edge cases
+   - Use temporary files/databases for tests
+
+### Code Review Checklist
+
+- [ ] Code follows Go conventions
+- [ ] All exported functions/types documented
+- [ ] Errors handled appropriately
+- [ ] Context used for cancellation
+- [ ] Tests added for new functionality
+- [ ] No hardcoded secrets
+- [ ] Input validation in place
+- [ ] Logging at appropriate levels
+- [ ] No race conditions
+- [ ] Graceful error handling
+- [ ] Performance considerations addressed
+- [ ] Security best practices followed
+
+### Dependencies
+
+1. **Adding Dependencies**
+   - Only add necessary dependencies
+   - Prefer standard library when possible
+   - Check for maintenance and security
+   - Pin versions in `go.mod`
+   - Document why dependency is needed
+
+2. **Updating Dependencies**
+   - Test after updates
+   - Check changelogs for breaking changes
+   - Update `go.sum` after changes
+   - Review security advisories
+
+### Version Control
+
+1. **Commits**
+   - Write clear commit messages
+   - Follow conventional commits format when possible
+   - Keep commits focused and atomic
+   - Test before committing
+
+2. **Pull Requests**
+   - Keep PRs focused and small
+   - Include tests
+   - Update documentation
+   - Request review before merging
+
+---
+
+**Remember**: Code is read more often than it's written. Write code for humans, optimize for machines only when necessary.
+

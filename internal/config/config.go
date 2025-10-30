@@ -1,20 +1,32 @@
+// Package config provides configuration loading from environment variables
+// with sensible defaults and validation.
 package config
 
 import (
 	"os"
 )
 
+// Config holds all bridge configuration settings.
+// Fields are loaded from environment variables via FromEnv().
 type Config struct {
-	APIToken      string
-	WebhookURL    string
-	ListenAddress string
-    MatrixHomeserverURL string
-    MatrixAccessToken   string
-    MatrixDefaultRoomID string
-    ViberDefaultReceiverID string
-    DatabasePath string
+	// Viber API configuration
+	APIToken      string // Viber Bot API token (required)
+	WebhookURL    string // Public HTTPS URL for Viber webhooks (required)
+	ListenAddress string // HTTP server listen address (default: ":8080")
+	
+	// Matrix client configuration
+	MatrixHomeserverURL string // Matrix homeserver base URL (required if bridging)
+	MatrixAccessToken   string // Matrix access token (required if bridging)
+	MatrixDefaultRoomID string // Default Matrix room for bridged messages (required if bridging)
+	
+	// Optional features
+	ViberDefaultReceiverID string // Default Viber user ID for Matrix → Viber forwarding (optional)
+	DatabasePath          string // SQLite database path (default: "./data/bridge.db")
 }
 
+// FromEnv loads configuration from environment variables.
+// Returns a Config with default values applied where appropriate.
+// Environment variables override any default values.
 func FromEnv() Config {
 	cfg := Config{}
 	cfg.APIToken = os.Getenv("VIBER_API_TOKEN")

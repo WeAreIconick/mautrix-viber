@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mautrix-viber
+  namespace: mautrix-viber
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mautrix-viber
+  template:
+    metadata:
+      labels:
+        app: mautrix-viber
+    spec:
+      containers:
+      - name: mautrix-viber
+        image: mautrix-viber:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: VIBER_API_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mautrix-viber-secrets
+              key: viber-api-token
+        - name: VIBER_WEBHOOK_URL
+          valueFrom:
+            configMapKeyRef:
+              name: mautrix-viber-config
+              key: viber-webhook-url
+        - name: MATRIX_HOMESERVER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: mautrix-viber-config
+              key: matrix-homeserver-url
+        - name: MATRIX_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: mautrix-viber-secrets
+              key: matrix-access-token
+        - name: MATRIX_DEFAULT_ROOM_ID
+          valueFrom:
+            configMapKeyRef:
+              name: mautrix-viber-config
+              key: matrix-default-room-id
+        - name: DATABASE_PATH
+          value: "/data/bridge.db"
+        - name: LISTEN_ADDRESS
+          value: ":8080"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: mautrix-viber-data
+

@@ -1,21 +1,24 @@
 package main
 
 import (
+	"context"
 	"fmt"
-    "log"
+	"log"
 	"net/http"
-    "context"
-    "os"
-    "os/signal"
-    "syscall"
-    "time"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-    "github.com/example/mautrix-viber/internal/config"
-    "github.com/example/mautrix-viber/internal/database"
-    imatrix "github.com/example/mautrix-viber/internal/matrix"
+	"maunium.net/go/mautrix/event"
+	"maunium.net/go/mautrix/id"
+
+	"github.com/example/mautrix-viber/internal/api"
+	"github.com/example/mautrix-viber/internal/config"
+	"github.com/example/mautrix-viber/internal/database"
+	imatrix "github.com/example/mautrix-viber/internal/matrix"
 	"github.com/example/mautrix-viber/internal/viber"
-    "github.com/example/mautrix-viber/internal/api"
-    "github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -59,9 +62,9 @@ func main() {
 
     // If Matrix is configured, start listener to forward Matrix -> Viber
     if mxClient != nil && env.ViberDefaultReceiverID != "" {
-        if err := mxClient.StartMessageListener(context.Background(), func(ctx context.Context, msg *imatrix.EventMessageEventContent, roomID imatrix.id.RoomID, sender imatrix.id.UserID) {
+        if err := mxClient.StartMessageListener(context.Background(), func(ctx context.Context, msg *event.MessageEventContent, roomID id.RoomID, sender id.UserID) {
             // Forward plain text messages to a default Viber receiver for demo purposes
-            if msg.MsgType == imatrix.event.MsgText || msg.MsgType == imatrix.event.MsgNotice {
+            if msg.MsgType == event.MsgText || msg.MsgType == event.MsgNotice {
                 // best-effort: include sender localpart
                 text := msg.Body
                 if text != "" {

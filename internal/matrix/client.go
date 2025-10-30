@@ -96,19 +96,50 @@ func (c *Client) EnsureGhostUser(ctx context.Context, userID id.UserID, displayN
 
 // StartMessageListener starts a background sync and invokes onMessage for message events.
 func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)) error {
-    syncer := c.mxClient.Sync()
-    syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
-        if evt == nil || evt.Content.Parsed == nil {
-            return
-        }
-        msg, ok := evt.Content.Parsed.(*event.MessageEventContent)
-        if !ok {
-            return
-        }
-        onMessage(context.Background(), msg, evt.RoomID, evt.Sender)
-    })
-    go func() { _ = syncer.SyncWithContext(ctx) }()
-    return nil
+	syncer := c.mxClient.Sync()
+	syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
+		if evt == nil || evt.Content.Parsed == nil {
+			return
+		}
+		msg, ok := evt.Content.Parsed.(*event.MessageEventContent)
+		if !ok {
+			return
+		}
+		onMessage(context.Background(), msg, evt.RoomID, evt.Sender)
+	})
+	go func() { _ = syncer.SyncWithContext(ctx) }()
+	return nil
+}
+
+// GetDefaultRoomID returns the default Matrix room ID.
+func (c *Client) GetDefaultRoomID() string {
+	return c.defaultRoomID
+}
+
+// RedactEvent redacts a Matrix event.
+func (c *Client) RedactEvent(ctx context.Context, roomID id.RoomID, eventID id.EventID) error {
+	if c.mxClient == nil {
+		return fmt.Errorf("matrix client not configured")
+	}
+	
+	_, err := c.mxClient.RedactEvent(ctx, roomID, eventID, &mautrix.ReqRedact{
+		Reason: "Message deleted on Viber",
+	})
+	return err
+}
+
+// SendTextToRoom sends a text message to a specific Matrix room.
+func (c *Client) SendTextToRoom(ctx context.Context, roomID id.RoomID, text string) error {
+	if c.mxClient == nil {
+		return fmt.Errorf("matrix client not configured")
+	}
+	
+	content := format.RenderMarkdown(text, true, true)
+	_, err := c.mxClient.SendMessageEvent(ctx, roomID, mautrix.EventMessage, content)
+	if err != nil {
+		return fmt.Errorf("send matrix message: %w", err)
+	}
+	return nil
 }
 
 

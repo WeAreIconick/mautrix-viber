@@ -30,7 +30,10 @@ func NewEventHandler(client *mautrix.Client, defaultRoomID string) *EventHandler
 }
 
 // SetViberClient sets the Viber client for sending messages.
+// vc should implement SendText(ctx context.Context, receiver, text string) error
 func (h *EventHandler) SetViberClient(vc interface{}) {
+	// Store as interface{} to avoid circular import
+	// Type checking happens at runtime when used
 	h.viberClient = vc
 }
 
