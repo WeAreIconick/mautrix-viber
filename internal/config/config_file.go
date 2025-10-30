@@ -83,28 +83,56 @@ func LoadFromFile(path string) (Config, error) {
 }
 
 // Validate checks configuration for required fields and valid values.
+// This is an enhanced version that also validates URLs and enforces HTTPS for production.
 func (c Config) Validate() error {
+	var errors []string
+	
+	// Viber configuration validation
 	if c.APIToken == "" {
-		return fmt.Errorf("viber api token is required")
+		errors = append(errors, "VIBER_API_TOKEN is required")
 	}
+	
 	if c.WebhookURL == "" {
-		return fmt.Errorf("viber webhook url is required")
+		errors = append(errors, "VIBER_WEBHOOK_URL is required")
+	} else {
+		if _, err := url.Parse(c.WebhookURL); err != nil {
+			errors = append(errors, fmt.Sprintf("VIBER_WEBHOOK_URL is invalid: %v", err))
+		}
+		// In production, webhook URL should be HTTPS
+		if !strings.HasPrefix(c.WebhookURL, "https://") {
+			errors = append(errors, "VIBER_WEBHOOK_URL should use HTTPS in production")
+		}
 	}
+	
 	if c.ListenAddress == "" {
-		return fmt.Errorf("listen address is required")
+		c.ListenAddress = ":8080" // Use default if not set
 	}
-	// Matrix config is optional but if provided, should be complete
-	if c.MatrixHomeserverURL != "" || c.MatrixAccessToken != "" || c.MatrixDefaultRoomID != "" {
+	
+	// Matrix configuration validation (required if bridging)
+	hasMatrixConfig := c.MatrixHomeserverURL != "" || c.MatrixAccessToken != "" || c.MatrixDefaultRoomID != ""
+	if hasMatrixConfig {
 		if c.MatrixHomeserverURL == "" {
-			return fmt.Errorf("matrix homeserver url is required if matrix is configured")
+			errors = append(errors, "MATRIX_HOMESERVER_URL is required when Matrix bridging is enabled")
+		} else {
+			if _, err := url.Parse(c.MatrixHomeserverURL); err != nil {
+				errors = append(errors, fmt.Sprintf("MATRIX_HOMESERVER_URL is invalid: %v", err))
+			}
 		}
+		
 		if c.MatrixAccessToken == "" {
-			return fmt.Errorf("matrix access token is required if matrix is configured")
+			errors = append(errors, "MATRIX_ACCESS_TOKEN is required when Matrix bridging is enabled")
 		}
+		
 		if c.MatrixDefaultRoomID == "" {
-			return fmt.Errorf("matrix default room id is required if matrix is configured")
+			errors = append(errors, "MATRIX_DEFAULT_ROOM_ID is required when Matrix bridging is enabled")
 		}
 	}
+	
+	if len(errors) > 0 {
+		return fmt.Errorf("configuration validation failed:\n  %s", strings.Join(errors, "\n  "))
+	}
+	
 	return nil
 }
+
 

@@ -2,12 +2,11 @@
 package version
 
 import (
-	_ "embed"
 	"strings"
 )
 
-//go:embed ../../VERSION
-var versionStr string
+// versionStr is set at build time via ldflags, or defaults to "dev"
+var versionStr = "dev"
 
 // Version returns the current version string.
 func Version() string {

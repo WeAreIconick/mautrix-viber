@@ -3,6 +3,7 @@ module github.com/example/mautrix-viber
 go 1.22.0
 
 require (
+	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.18
 	github.com/prometheus/client_golang v1.18.0
 	github.com/redis/go-redis/v9 v9.3.0

@@ -53,14 +53,6 @@ func TestWebhookSignatureFlow(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Viber-Content-Signature", signature)
 	
-	// Create recorder
-	w := httptest.NewRecorder()
-	
-	// Create client with token
-	client := viber.NewClient(viber.Config{
-		APIToken: token,
-	}, nil, nil)
-	
 	// This test would require a full setup with database and Matrix client
 	// For now, just verify the signature calculation
 	t.Logf("Calculated signature: %s", signature)

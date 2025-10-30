@@ -17,6 +17,7 @@ import (
 	"github.com/example/mautrix-viber/internal/config"
 	"github.com/example/mautrix-viber/internal/database"
 	imatrix "github.com/example/mautrix-viber/internal/matrix"
+	"github.com/example/mautrix-viber/internal/middleware"
 	"github.com/example/mautrix-viber/internal/viber"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -24,7 +25,12 @@ import (
 func main() {
 	fmt.Println("mautrix-viber bootstrap")
 
-    env := config.FromEnv()
+	env := config.FromEnv()
+	
+	// Validate configuration before proceeding
+	if err := env.Validate(); err != nil {
+		log.Fatalf("configuration validation failed: %v", err)
+	}
 
     // Init Matrix client (optional: only if fully configured)
     var mxClient *imatrix.Client
@@ -76,21 +82,33 @@ func main() {
         }
     }
 
-    mux := http.NewServeMux()
-    mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
-    mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
-    mux.Handle("/metrics", promhttp.Handler())
-    mux.HandleFunc("/api/info", api.InfoHandler)
-    mux.HandleFunc("/viber/webhook", v.WebhookHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/healthz", healthHandler(db, v))
+	mux.HandleFunc("/readyz", readinessHandler(db, v, mxClient))
+	mux.Handle("/metrics", promhttp.Handler())
+	mux.HandleFunc("/api/info", api.InfoHandler)
+	mux.HandleFunc("/viber/webhook", v.WebhookHandler)
 
-    srv := &http.Server{
-        Addr:              cfg.ListenAddress,
-        Handler:           withServerMiddleware(withRateLimit(mux)),
-        ReadTimeout:       10 * time.Second,
-        ReadHeaderTimeout: 5 * time.Second,
-        WriteTimeout:      15 * time.Second,
-        IdleTimeout:       60 * time.Second,
-    }
+	// Build middleware chain: recovery -> request ID -> logging -> rate limit -> body size
+	middlewareChain := withServerMiddleware(
+		withRateLimit(
+			middleware.LoggingMiddleware(
+				middleware.RequestIDMiddleware(
+					middleware.RecoveryMiddleware(mux),
+				),
+			),
+		),
+	)
+
+	srv := &http.Server{
+		Addr:              cfg.ListenAddress,
+		Handler:           middlewareChain,
+		ReadTimeout:       10 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB max header size
+	}
 
     go func() {
         log.Printf("listening on %s", cfg.ListenAddress)

@@ -3,6 +3,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -16,11 +17,23 @@ type DB struct {
 }
 
 // Open opens or creates a SQLite database at path and runs migrations.
+// Configures connection pool settings for production use:
+// - SetMaxOpenConns: Maximum number of open connections (25 for SQLite)
+// - SetMaxIdleConns: Maximum idle connections (5)
+// - SetConnMaxLifetime: Maximum connection lifetime (5 minutes)
+// - SetConnMaxIdleTime: Maximum idle time before closing (10 minutes)
 func Open(path string) (*DB, error) {
-	db, err := sql.Open("sqlite3", path+"?_foreign_keys=1&_journal_mode=WAL")
+	db, err := sql.Open("sqlite3", path+"?_foreign_keys=1&_journal_mode=WAL&_busy_timeout=5000")
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
+	
+	// Configure connection pool for production
+	db.SetMaxOpenConns(25)           // SQLite default is usually unlimited, but we limit for safety
+	db.SetMaxIdleConns(5)            // Keep some connections ready
+	db.SetConnMaxLifetime(5 * time.Minute)  // Refresh connections periodically
+	db.SetConnMaxIdleTime(10 * time.Minute) // Close idle connections
+	
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping database: %w", err)
 	}
@@ -36,7 +49,21 @@ func (d *DB) Close() error {
 	return d.db.Close()
 }
 
-// migrate creates tables if they don't exist.
+// Ping checks database connectivity with a timeout.
+func (d *DB) Ping(ctx context.Context) error {
+	return d.db.PingContext(ctx)
+}
+
+// ViberUser represents a Viber user in the database.
+type ViberUser struct {
+	ViberID     string
+	ViberName   string
+	MatrixUserID *string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// migrate creates all necessary database tables if they don't exist.
 func (d *DB) migrate() error {
 	schema := `
 	CREATE TABLE IF NOT EXISTS viber_users (
@@ -63,158 +90,170 @@ func (d *DB) migrate() error {
 		FOREIGN KEY (viber_chat_id) REFERENCES room_mappings(viber_chat_id)
 	);
 
-	CREATE INDEX IF NOT EXISTS idx_viber_users_matrix ON viber_users(matrix_user_id);
-	CREATE INDEX IF NOT EXISTS idx_message_mappings_viber ON message_mappings(viber_message_id);
-	CREATE INDEX IF NOT EXISTS idx_message_mappings_matrix ON message_mappings(matrix_event_id);
-
 	CREATE TABLE IF NOT EXISTS group_members (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		viber_chat_id TEXT NOT NULL,
 		viber_user_id TEXT NOT NULL,
+		viber_user_name TEXT NOT NULL,
 		joined_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-		UNIQUE(viber_chat_id, viber_user_id)
+		PRIMARY KEY (viber_chat_id, viber_user_id),
+		FOREIGN KEY (viber_chat_id) REFERENCES room_mappings(viber_chat_id)
 	);
 
-	CREATE INDEX IF NOT EXISTS idx_group_members_chat ON group_members(viber_chat_id);
-	CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(viber_user_id);
+	CREATE INDEX IF NOT EXISTS idx_room_mappings_viber ON room_mappings(viber_chat_id);
+	CREATE INDEX IF NOT EXISTS idx_room_mappings_matrix ON room_mappings(matrix_room_id);
+	CREATE INDEX IF NOT EXISTS idx_message_mappings_viber ON message_mappings(viber_message_id);
+	CREATE INDEX IF NOT EXISTS idx_message_mappings_matrix ON message_mappings(matrix_event_id);
 	`
+	
 	if _, err := d.db.Exec(schema); err != nil {
-		return fmt.Errorf("create tables: %w", err)
+		return fmt.Errorf("execute migration: %w", err)
 	}
 	return nil
 }
 
-// ViberUser represents a Viber user with optional Matrix mapping.
-type ViberUser struct {
-	ViberID     string
-	ViberName   string
-	MatrixUserID *string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-}
-
-// UpsertViberUser creates or updates a Viber user record.
+// UpsertViberUser creates or updates a Viber user in the database.
 func (d *DB) UpsertViberUser(viberID, viberName string) error {
-	_, err := d.db.Exec(
-		`INSERT INTO viber_users (viber_id, viber_name, updated_at)
-		 VALUES (?, ?, CURRENT_TIMESTAMP)
-		 ON CONFLICT(viber_id) DO UPDATE SET
-		 viber_name = excluded.viber_name,
-		 updated_at = CURRENT_TIMESTAMP`,
-		viberID, viberName,
-	)
+	_, err := d.db.Exec(`
+		INSERT INTO viber_users (viber_id, viber_name, updated_at)
+		VALUES (?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(viber_id) DO UPDATE SET
+			viber_name = excluded.viber_name,
+			updated_at = CURRENT_TIMESTAMP
+	`, viberID, viberName)
 	return err
 }
 
-// LinkViberUser links a Viber user to a Matrix user ID.
-func (d *DB) LinkViberUser(viberID, matrixUserID string) error {
-	_, err := d.db.Exec(
-		`UPDATE viber_users SET matrix_user_id = ?, updated_at = CURRENT_TIMESTAMP WHERE viber_id = ?`,
-		matrixUserID, viberID,
-	)
-	return err
-}
-
-// GetViberUser returns a Viber user by ID.
+// GetViberUser retrieves a Viber user by ID.
 func (d *DB) GetViberUser(viberID string) (*ViberUser, error) {
-	var u ViberUser
-	var mxID sql.NullString
-	err := d.db.QueryRow(
-		`SELECT viber_id, viber_name, matrix_user_id, created_at, updated_at
-		 FROM viber_users WHERE viber_id = ?`,
-		viberID,
-	).Scan(&u.ViberID, &u.ViberName, &mxID, &u.CreatedAt, &u.UpdatedAt)
+	var user ViberUser
+	var matrixUserID sql.NullString
+	err := d.db.QueryRow(`
+		SELECT viber_id, viber_name, matrix_user_id, created_at, updated_at
+		FROM viber_users
+		WHERE viber_id = ?
+	`, viberID).Scan(&user.ViberID, &user.ViberName, &matrixUserID, &user.CreatedAt, &user.UpdatedAt)
+	
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
-	if mxID.Valid {
-		u.MatrixUserID = &mxID.String
+	
+	if matrixUserID.Valid {
+		user.MatrixUserID = &matrixUserID.String
 	}
-	return &u, nil
+	return &user, nil
+}
+
+// LinkViberUser links a Viber user to a Matrix user ID.
+func (d *DB) LinkViberUser(viberID, matrixUserID string) error {
+	_, err := d.db.Exec(`
+		UPDATE viber_users
+		SET matrix_user_id = ?, updated_at = CURRENT_TIMESTAMP
+		WHERE viber_id = ?
+	`, matrixUserID, viberID)
+	return err
 }
 
 // CreateRoomMapping creates a mapping between a Viber chat and Matrix room.
 func (d *DB) CreateRoomMapping(viberChatID, matrixRoomID string) error {
-	_, err := d.db.Exec(
-		`INSERT INTO room_mappings (viber_chat_id, matrix_room_id) VALUES (?, ?)`,
-		viberChatID, matrixRoomID,
-	)
+	_, err := d.db.Exec(`
+		INSERT INTO room_mappings (viber_chat_id, matrix_room_id)
+		VALUES (?, ?)
+		ON CONFLICT(viber_chat_id) DO UPDATE SET
+			matrix_room_id = excluded.matrix_room_id
+	`, viberChatID, matrixRoomID)
 	return err
 }
 
-// GetMatrixRoomID returns the Matrix room ID for a Viber chat, or empty if not found.
+// GetMatrixRoomID retrieves the Matrix room ID for a Viber chat.
 func (d *DB) GetMatrixRoomID(viberChatID string) (string, error) {
-	var roomID string
-	err := d.db.QueryRow(
-		`SELECT matrix_room_id FROM room_mappings WHERE viber_chat_id = ?`,
-		viberChatID,
-	).Scan(&roomID)
+	var matrixRoomID string
+	err := d.db.QueryRow(`
+		SELECT matrix_room_id
+		FROM room_mappings
+		WHERE viber_chat_id = ?
+	`, viberChatID).Scan(&matrixRoomID)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
-	return roomID, err
+	return matrixRoomID, err
 }
 
-// GetViberChatID returns the Viber chat ID for a Matrix room, or empty if not found.
+// GetViberChatID retrieves the Viber chat ID for a Matrix room.
 func (d *DB) GetViberChatID(matrixRoomID string) (string, error) {
-	var chatID string
-	err := d.db.QueryRow(
-		`SELECT viber_chat_id FROM room_mappings WHERE matrix_room_id = ?`,
-		matrixRoomID,
-	).Scan(&chatID)
+	var viberChatID string
+	err := d.db.QueryRow(`
+		SELECT viber_chat_id
+		FROM room_mappings
+		WHERE matrix_room_id = ?
+	`, matrixRoomID).Scan(&viberChatID)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
-	return chatID, err
+	return viberChatID, err
 }
 
-// StoreMessageMapping stores a mapping between Viber and Matrix message IDs.
-func (d *DB) StoreMessageMapping(viberMsgID, matrixEventID, viberChatID string) error {
-	_, err := d.db.Exec(
-		`INSERT INTO message_mappings (viber_message_id, matrix_event_id, viber_chat_id)
-		 VALUES (?, ?, ?)`,
-		viberMsgID, matrixEventID, viberChatID,
-	)
+// StoreMessageMapping stores a mapping between Viber message ID and Matrix event ID.
+func (d *DB) StoreMessageMapping(viberMessageID, matrixEventID, viberChatID string) error {
+	_, err := d.db.Exec(`
+		INSERT INTO message_mappings (viber_message_id, matrix_event_id, viber_chat_id)
+		VALUES (?, ?, ?)
+		ON CONFLICT(viber_message_id) DO UPDATE SET
+			matrix_event_id = excluded.matrix_event_id
+	`, viberMessageID, matrixEventID, viberChatID)
 	return err
 }
 
-// GetMatrixEventID returns the Matrix event ID for a Viber message, or empty if not found.
-func (d *DB) GetMatrixEventID(viberMsgID string) (string, error) {
-	var eventID string
-	err := d.db.QueryRow(
-		`SELECT matrix_event_id FROM message_mappings WHERE viber_message_id = ?`,
-		viberMsgID,
-	).Scan(&eventID)
+// GetMatrixEventID retrieves the Matrix event ID for a Viber message.
+func (d *DB) GetMatrixEventID(viberMessageID string) (string, error) {
+	var matrixEventID string
+	err := d.db.QueryRow(`
+		SELECT matrix_event_id
+		FROM message_mappings
+		WHERE viber_message_id = ?
+	`, viberMessageID).Scan(&matrixEventID)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}
-	return eventID, err
+	return matrixEventID, err
 }
 
-// UpsertGroupMember ensures a (chat,user) membership row exists.
-func (d *DB) UpsertGroupMember(viberChatID, viberUserID string) error {
-    _, err := d.db.Exec(
-        `INSERT INTO group_members (viber_chat_id, viber_user_id)
-         VALUES (?, ?) ON CONFLICT(viber_chat_id, viber_user_id) DO NOTHING`,
-        viberChatID, viberUserID,
-    )
-    return err
+// UpsertGroupMember adds or updates a group member in a Viber chat.
+func (d *DB) UpsertGroupMember(viberChatID, viberUserID string, viberUserName ...string) error {
+	name := viberUserID
+	if len(viberUserName) > 0 && viberUserName[0] != "" {
+		name = viberUserName[0]
+	}
+	_, err := d.db.Exec(`
+		INSERT INTO group_members (viber_chat_id, viber_user_id, viber_user_name, joined_at)
+		VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+		ON CONFLICT(viber_chat_id, viber_user_id) DO UPDATE SET
+			viber_user_name = excluded.viber_user_name
+	`, viberChatID, viberUserID, name)
+	return err
 }
 
-// ListGroupMembers returns all user IDs in a Viber chat.
+// ListGroupMembers lists all members of a Viber group chat.
 func (d *DB) ListGroupMembers(viberChatID string) ([]string, error) {
-    rows, err := d.db.Query(`SELECT viber_user_id FROM group_members WHERE viber_chat_id = ?`, viberChatID)
-    if err != nil { return nil, err }
-    defer rows.Close()
-    var users []string
-    for rows.Next() {
-        var uid string
-        if err := rows.Scan(&uid); err != nil { return nil, err }
-        users = append(users, uid)
-    }
-    return users, rows.Err()
+	rows, err := d.db.Query(`
+		SELECT viber_user_id
+		FROM group_members
+		WHERE viber_chat_id = ?
+	`, viberChatID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var members []string
+	for rows.Next() {
+		var userID string
+		if err := rows.Scan(&userID); err != nil {
+			return nil, err
+		}
+		members = append(members, userID)
+	}
+	return members, rows.Err()
 }
-
