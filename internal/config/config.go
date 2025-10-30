@@ -8,6 +8,9 @@ type Config struct {
 	APIToken      string
 	WebhookURL    string
 	ListenAddress string
+    MatrixHomeserverURL string
+    MatrixAccessToken   string
+    MatrixDefaultRoomID string
 }
 
 func FromEnv() Config {
@@ -18,5 +21,8 @@ func FromEnv() Config {
 	if cfg.ListenAddress == "" {
 		cfg.ListenAddress = ":8080"
 	}
+    cfg.MatrixHomeserverURL = os.Getenv("MATRIX_HOMESERVER_URL")
+    cfg.MatrixAccessToken = os.Getenv("MATRIX_ACCESS_TOKEN")
+    cfg.MatrixDefaultRoomID = os.Getenv("MATRIX_DEFAULT_ROOM_ID")
 	return cfg
 }

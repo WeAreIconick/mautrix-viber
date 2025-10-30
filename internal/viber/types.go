@@ -23,6 +23,8 @@ type Message struct {
 	Type    string `json:"type"`
 	Text    string `json:"text,omitempty"`
 	Media   string `json:"media,omitempty"`
+    FileName string `json:"file_name,omitempty"`
+    Thumbnail string `json:"thumbnail,omitempty"`
 }
 
 type WebhookRequest struct {
