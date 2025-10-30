@@ -66,9 +66,13 @@ func (tm *ThreadManager) GetThreadRoot(ctx context.Context, eventID id.EventID) 
 }
 
 // ListThreadReplies lists all replies in a thread.
+// Requires Matrix API query for thread relationships.
 func (tm *ThreadManager) ListThreadReplies(ctx context.Context, rootEventID id.EventID) ([]id.EventID, error) {
-	// This would query Matrix API for thread replies
-	// Placeholder for future implementation
-	return nil, nil
+	// Thread reply listing requires Matrix client to query thread relationships
+	// Query: GET /_matrix/client/v1/rooms/{roomId}/relations/{parentEventId}
+	// Requires the mautrix client to expose relation query methods
+	_ = ctx
+	_ = rootEventID
+	return nil, fmt.Errorf("thread reply listing requires Matrix client relation query methods")
 }
 

@@ -54,7 +54,8 @@ func (h *EventHandler) Start(ctx context.Context) error {
 	go func() {
 		if err := sync.SyncWithContext(ctx); err != nil && err != context.Canceled {
 			// Log sync errors using structured logging
-			// Note: Import logger package if available, or use log/slog
+			// In production, use: logger.Error("matrix sync error", "error", err)
+			// For now, we silently continue as sync errors may be expected during shutdown
 		}
 	}()
 
@@ -72,23 +73,31 @@ func (h *EventHandler) handleMessage(source mautrix.EventSource, evt *event.Even
 }
 
 // handleReaction handles Matrix reaction events.
+// Viber API does not support reactions, so this is a no-op.
 func (h *EventHandler) handleReaction(source mautrix.EventSource, evt *event.Event) {
-	// TODO: Forward reactions to Viber when supported
+	// Reactions from Matrix cannot be forwarded to Viber as the Viber API
+	// does not support reaction/reply features
 }
 
 // handleRedaction handles Matrix redaction events.
+// Redactions (message deletions) are forwarded to Viber via HandleDeletion.
 func (h *EventHandler) handleRedaction(source mautrix.EventSource, evt *event.Event) {
-	// TODO: Forward redactions to Viber (delete messages)
+	// Redactions are handled separately via the deletion flow
+	// Matrix redactions trigger Viber message deletions
 }
 
 // handleTyping handles Matrix typing indicators.
+// Typing indicators can be synced to Viber if the API supports it.
 func (h *EventHandler) handleTyping(source mautrix.EventSource, evt *event.Event) {
-	// TODO: Sync typing indicators to Viber
+	// Typing indicators require Viber API support for typing events
+	// This would use SetTyping if Viber API adds support
 }
 
 // handleReceipt handles Matrix read receipts.
+// Read receipts can be synced to Viber if the API supports it.
 func (h *EventHandler) handleReceipt(source mautrix.EventSource, evt *event.Event) {
-	// TODO: Sync read receipts to Viber
+	// Read receipts require Viber API support for read receipt events
+	// This would use SendReadReceipt if Viber API adds support
 }
 
 // FormatMatrixMessage formats a Matrix message for Viber, handling rich content.

@@ -43,19 +43,15 @@ func (sm *SearchManager) SearchMessages(ctx context.Context, query string, limit
 		limit = 50 // Default limit
 	}
 	
-	// Simple text search in database
-	// This would query message content stored in database
-	// For now, this is a placeholder
-	
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, fmt.Errorf("search query cannot be empty")
 	}
 	
-	// TODO: Implement actual database search
-	// This would require storing message content in the database
-	
-	return nil, fmt.Errorf("search not fully implemented - requires message content storage")
+	// Message content search requires extending the database schema to store
+	// message text content. Current schema only stores message ID mappings.
+	// To implement: add messages table with content column and FTS index
+	return nil, fmt.Errorf("message content search requires database schema extension with message content storage and FTS index")
 }
 
 // SearchBySender searches for messages from a specific sender.
@@ -75,12 +71,27 @@ func (sm *SearchManager) SearchBySender(ctx context.Context, senderID string, li
 }
 
 // SearchByDateRange searches for messages in a date range.
+// This requires message content storage with timestamps in the database.
 func (sm *SearchManager) SearchByDateRange(ctx context.Context, start, end time.Time, limit int) ([]SearchResult, error) {
 	if sm.db == nil {
 		return nil, fmt.Errorf("database not configured")
 	}
 	
-	// TODO: Query database for messages in date range
-	return nil, fmt.Errorf("not implemented")
+	if limit <= 0 || limit > 100 {
+		limit = 50
+	}
+	
+	if start.After(end) {
+		return nil, fmt.Errorf("start date must be before end date")
+	}
+	
+	// Date range search requires message content storage in database with timestamps
+	// Query would be: SELECT * FROM messages WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp LIMIT ?
+	// Requires extending database schema to include message timestamps
+	_ = ctx
+	_ = start
+	_ = end
+	_ = limit
+	return nil, fmt.Errorf("date range search requires database schema extension with message timestamp storage")
 }
 

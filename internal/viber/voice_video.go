@@ -36,7 +36,7 @@ func (c *Client) HandleVoiceMessage(ctx context.Context, mediaURL string, durati
 	}
 	
 	// Upload to Matrix and send as m.audio
-	// TODO: Implement SendAudio in matrix client
+	// Audio forwarding requires Matrix client SendAudio method implementation
 	// For now, send as file
 	return c.matrix.SendImage(ctx, fmt.Sprintf("voice_%d.ogg", duration), mimeType, data, nil)
 }
@@ -69,22 +69,25 @@ func (c *Client) HandleVideoMessage(ctx context.Context, mediaURL, thumbnailURL 
 	}
 	
 	// Upload to Matrix and send as m.video
-	// TODO: Implement SendVideo in matrix client
+	// Video forwarding requires Matrix client SendVideo method implementation
 	// For now, send as file
 	return c.matrix.SendImage(ctx, fmt.Sprintf("video_%d.mp4", duration), mimeType, data, nil)
 }
 
 // TranscodeIfNeeded transcodes media if needed for Matrix compatibility.
+// Media transcoding requires external tools (ffmpeg) and is not currently implemented.
 func (c *Client) TranscodeIfNeeded(ctx context.Context, inputData []byte, inputMime, outputMime string) ([]byte, error) {
-	// Placeholder for transcoding logic
-	// This would require ffmpeg or similar tool
-	// For now, return original data if mime types match
 	if inputMime == outputMime {
 		return inputData, nil
 	}
 	
-	// TODO: Implement actual transcoding
-	// Would need external tool like ffmpeg
-	return inputData, fmt.Errorf("transcoding not implemented: %s -> %s", inputMime, outputMime)
+	// Transcoding requires external media processing tools (ffmpeg, imagemagick, etc.)
+	// Implementation would need to:
+	// 1. Detect available transcoding tools
+	// 2. Execute transcoding commands
+	// 3. Handle transcoding errors gracefully
+	// For now, return error indicating transcoding is required but not available
+	_ = ctx
+	return nil, fmt.Errorf("media transcoding from %s to %s requires external tools (ffmpeg) - not currently implemented", inputMime, outputMime)
 }
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"github.com/example/mautrix-viber/internal/api"
 	"github.com/example/mautrix-viber/internal/config"
 	"github.com/example/mautrix-viber/internal/database"
+	"github.com/example/mautrix-viber/internal/logger"
 	imatrix "github.com/example/mautrix-viber/internal/matrix"
 	"github.com/example/mautrix-viber/internal/middleware"
 	"github.com/example/mautrix-viber/internal/viber"
@@ -23,7 +23,9 @@ import (
 )
 
 func main() {
-	fmt.Println("mautrix-viber bootstrap")
+	logger.Info("mautrix-viber starting",
+		"version", "dev",
+	)
 
 	env := config.FromEnv()
 	
@@ -45,7 +47,7 @@ func main() {
         }
         mxClient = mc
     } else {
-        log.Printf("matrix config incomplete; message relay will be disabled")
+        logger.Info("matrix config incomplete; message relay will be disabled")
     }
 
     // Open database
@@ -74,11 +76,19 @@ func main() {
                 // best-effort: include sender localpart
                 text := msg.Body
                 if text != "" {
-                    _, _ = v.SendText(ctx, env.ViberDefaultReceiverID, text)
+                    _, err := v.SendText(ctx, env.ViberDefaultReceiverID, text)
+                    if err != nil {
+                        logger.Warn("failed to forward message to Viber",
+                            "error", err,
+                            "receiver", env.ViberDefaultReceiverID,
+                        )
+                    }
                 }
             }
         }); err != nil {
-            log.Printf("matrix listener error: %v", err)
+            logger.Error("matrix listener error",
+                "error", err,
+            )
         }
     }
 
@@ -111,8 +121,13 @@ func main() {
 	}
 
     go func() {
-        log.Printf("listening on %s", cfg.ListenAddress)
+        logger.Info("http server listening",
+            "address", cfg.ListenAddress,
+        )
         if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            logger.Error("server error",
+                "error", err,
+            )
             log.Fatalf("server error: %v", err)
         }
     }()
@@ -124,9 +139,11 @@ func main() {
     shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
     defer cancel()
     if err := srv.Shutdown(shutdownCtx); err != nil {
-        log.Printf("graceful shutdown failed: %v", err)
+        logger.Error("graceful shutdown failed",
+            "error", err,
+        )
     }
-    log.Printf("shutdown complete")
+    logger.Info("shutdown complete")
 }
 
 // withServerMiddleware adds basic defenses like body size limits.

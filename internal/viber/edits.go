@@ -49,19 +49,15 @@ func (c *Client) HandleEdit(ctx context.Context, viberMsgID, newText string) err
 		return fmt.Errorf("matrix client not configured")
 	}
 	
-	// Matrix doesn't support editing messages directly
-	// Instead, we'd redact the old and send a new message with edit indication
-	// For now, this is a placeholder
-	
+	// Matrix message editing works by redacting the old message and sending a new one
+	// with m.new_content indicating it's an edit. For now, we redact and send a new message.
 	if err := c.HandleDeletion(ctx, viberMsgID); err != nil {
 		return fmt.Errorf("delete old message: %w", err)
 	}
 	
 	// Send new message with "(edited)" indicator
+	// Proper Matrix editing would use m.new_content but requires event ID tracking
 	editedText := fmt.Sprintf("%s (edited)", newText)
 	return c.matrix.SendText(ctx, editedText)
-	
-	// TODO: Proper Matrix message editing support would require sending a new message
-	// with m.new_content indicating it's an edit of the original
 }
 

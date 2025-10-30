@@ -64,26 +64,36 @@ func (plm *PowerLevelManager) SyncPowerLevels(ctx context.Context, viberChatID s
 }
 
 // setUserPowerLevel sets a user's power level in a Matrix room.
+// Requires Matrix client implementation of SetPowerLevel method.
 func (plm *PowerLevelManager) setUserPowerLevel(ctx context.Context, roomID id.RoomID, userID id.UserID, level int64) error {
 	if plm.matrixClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
 	
-	// This would require mautrix client access to set power levels
-	// For now, this is a placeholder
+	// Power level setting requires Matrix client to implement SetPowerLevel
+	// This would use PUT /_matrix/client/r0/rooms/{roomId}/state/m.room.power_levels
+	// Requires the mautrix client to expose power level modification methods
+	_ = ctx
 	_ = roomID
 	_ = userID
 	_ = level
-	
-	// TODO: Implement SetPowerLevel in matrix client
-	return fmt.Errorf("power level setting not implemented")
+	return fmt.Errorf("power level setting requires Matrix client SetPowerLevel method implementation")
 }
 
 // GetPowerLevel gets a user's power level in a Matrix room.
+// Returns the user's current power level by querying Matrix room state.
 func (plm *PowerLevelManager) GetPowerLevel(ctx context.Context, roomID id.RoomID, userID id.UserID) (int64, error) {
-	// Query Matrix API for power levels
-	// Placeholder for future implementation
-	return 0, nil
+	if plm.matrixClient == nil {
+		return 0, fmt.Errorf("matrix client not configured")
+	}
+	
+	// Power level retrieval requires querying Matrix room state:
+	// GET /_matrix/client/r0/rooms/{roomId}/state/m.room.power_levels
+	// Requires the mautrix client to expose room state query methods
+	_ = ctx
+	_ = roomID
+	_ = userID
+	return 0, fmt.Errorf("power level retrieval requires Matrix client room state query methods")
 }
 
 // IsAdmin checks if a user is an admin in a room.

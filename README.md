@@ -451,12 +451,11 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for comprehensive trouble
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap
 - [TESTING.md](TESTING.md) - Testing guide and test coverage
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
-- **[.cursorrules](.cursorrules) - ⚠️ REQUIRED: Comprehensive coding standards** - All contributors must read
 - [PRODUCTION_HARDENING.md](PRODUCTION_HARDENING.md) - Production hardening features
 
 ### Coding Standards
 
-This project follows strict Go best practices defined in [`.cursorrules`](.cursorrules). Key principles:
+This project follows strict Go best practices. Key principles:
 
 - ✅ **Error Handling**: All errors handled, never ignored
 - ✅ **Testing**: Table-driven tests, **80%+ coverage target**
@@ -466,7 +465,7 @@ This project follows strict Go best practices defined in [`.cursorrules`](.curso
 - ✅ **Documentation**: Godoc comments for all exported functions
 - ✅ **Code Quality**: Must pass `go vet` and `golangci-lint` with no warnings
 
-**See [`.cursorrules`](.cursorrules) for complete standards with examples.**
+See [CONTRIBUTING.md](CONTRIBUTING.md) for complete coding standards and guidelines.
 
 ---
 
@@ -478,18 +477,18 @@ This project is licensed under the MIT License. See `LICENSE` for details.
 
 ## Contributing
 
-Contributions welcome! **Please read [`.cursorrules`](.cursorrules) before contributing** - it defines our coding standards.
+Contributions welcome! Please review our coding standards before contributing.
 
 Quick steps:
 
-1. Read [`.cursorrules`](.cursorrules) - **REQUIRED**
+1. Review [CONTRIBUTING.md](CONTRIBUTING.md) for coding standards
 2. Fork the repository
 3. Create a feature branch
 4. Add tests for new features (80%+ coverage target)
 5. Ensure `go vet` and `golangci-lint` pass
 6. Submit a pull request
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines and coding standards.
 
 ---
 

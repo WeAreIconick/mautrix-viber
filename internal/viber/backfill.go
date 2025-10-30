@@ -34,12 +34,9 @@ func (bm *BackfillManager) BackfillChatHistory(ctx context.Context, viberChatID,
 		return fmt.Errorf("database not configured")
 	}
 	
-	// Get recent messages from Viber API (placeholder)
-	// Note: Viber API may not support history retrieval directly
-	// This is a placeholder for when history is available
-	
-	// For now, we'll skip actual backfilling since Viber doesn't provide history API
-	// This would need to be implemented if Viber adds history endpoints
+	// Viber API does not provide message history retrieval endpoints
+	// Backfilling would require Viber to add history API support
+	// When available, this would fetch recent messages and forward them to Matrix
 	
 	// Store room mapping if not exists
 	if err := bm.db.CreateRoomMapping(viberChatID, matrixRoomID); err != nil {

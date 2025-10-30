@@ -32,8 +32,7 @@ func (nm *NotificationManager) ConfigurePushRules(ctx context.Context, viberUser
 	
 	if muteNotifications {
 		// Mute notifications by setting push rule
-		// This would require push rules API access
-		// Placeholder for future implementation
+		// Requires Matrix push rules API access
 		return nm.muteUserNotifications(ctx, ghostID)
 	} else {
 		return nm.unmuteUserNotifications(ctx, ghostID)
@@ -41,23 +40,36 @@ func (nm *NotificationManager) ConfigurePushRules(ctx context.Context, viberUser
 }
 
 // muteUserNotifications mutes notifications for a user.
+// Requires Matrix push rules API access to configure notification preferences.
 func (nm *NotificationManager) muteUserNotifications(ctx context.Context, userID id.UserID) error {
-	// TODO: Implement push rules API call to mute notifications
-	// This would use the Matrix push rules API
-	return nil
+	// Push rules API implementation requires Matrix client access to:
+	// PUT /_matrix/client/r0/pushrules/<scope>/<kind>/<ruleId>
+	// This requires the mautrix client to expose push rules methods
+	_ = ctx
+	_ = userID
+	return fmt.Errorf("notification muting requires Matrix push rules API implementation")
 }
 
 // unmuteUserNotifications unmutes notifications for a user.
+// Requires Matrix push rules API access to configure notification preferences.
 func (nm *NotificationManager) unmuteUserNotifications(ctx context.Context, userID id.UserID) error {
-	// TODO: Implement push rules API call to unmute notifications
-	return nil
+	// Push rules API implementation requires Matrix client access to:
+	// DELETE /_matrix/client/r0/pushrules/<scope>/<kind>/<ruleId>
+	// This requires the mautrix client to expose push rules methods
+	_ = ctx
+	_ = userID
+	return fmt.Errorf("notification unmuting requires Matrix push rules API implementation")
 }
 
 // SetRoomNotifications sets notification settings for a specific room.
+// Requires Matrix push rules API access for room-specific notification configuration.
 func (nm *NotificationManager) SetRoomNotifications(ctx context.Context, roomID id.RoomID, mute bool) error {
-	// TODO: Implement room-specific notification settings
+	// Room-specific notification settings require Matrix push rules API:
+	// PUT /_matrix/client/r0/pushrules/global/room/<roomId>
+	// This requires the mautrix client to expose room push rules methods
+	_ = ctx
 	_ = roomID
 	_ = mute
-	return nil
+	return fmt.Errorf("room notification settings require Matrix push rules API implementation")
 }
 

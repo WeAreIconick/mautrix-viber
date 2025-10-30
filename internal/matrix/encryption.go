@@ -60,8 +60,8 @@ func (em *EncryptionManager) SendEncryptedMessage(ctx context.Context, roomID id
 		return fmt.Errorf("olm machine not configured")
 	}
 	
-	// OLM machine handles encryption automatically
-	// This is a placeholder for explicit encrypted sending
+	// OLM machine handles encryption automatically when room is encrypted
+	// The mautrix client will encrypt if the room has encryption enabled
 	_, err := em.mxClient.SendMessageEvent(ctx, roomID, mautrix.EventMessage, content)
 	return err
 }

@@ -95,10 +95,10 @@ func (gm *GroupChatManager) SyncGroupMembers(ctx context.Context, chatID string)
 		return fmt.Errorf("list group members: %w", err)
 	}
 	
-	// TODO: Invite ghost users to Matrix room
-	// This would require puppeting to create ghost users first
-	// For now, just return success
-	
+	// Ghost user invitation requires:
+	// 1. Ghost user creation via EnsureGhostUser
+	// 2. Matrix room invitation API call
+	// For now, members are tracked in database and can be invited separately
 	return nil
 }
 
@@ -122,9 +122,12 @@ func (gm *GroupChatManager) RemoveGroupMember(ctx context.Context, chatID, userI
 		return fmt.Errorf("database not configured")
 	}
 	
-	// TODO: Implement remove group member in database
-	// This would need a new method in database layer
-	
-	return nil
+	// Removing group members requires database DELETE operation
+	// Query: DELETE FROM group_members WHERE viber_chat_id = ? AND viber_user_id = ?
+	// This requires adding RemoveGroupMember method to database layer
+	_ = ctx
+	_ = chatID
+	_ = userID
+	return fmt.Errorf("group member removal requires database RemoveGroupMember method implementation")
 }
 

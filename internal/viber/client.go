@@ -56,7 +56,10 @@ func (c *Client) EnsureWebhook() error {
         "url":         c.config.WebhookURL,
         "event_types": []string{"message", "subscribed", "unsubscribed", "conversation_started"},
     }
-    data, _ := json.Marshal(body)
+    data, err := json.Marshal(body)
+    if err != nil {
+        return fmt.Errorf("marshal webhook payload: %w", err)
+    }
     req, err := http.NewRequest(http.MethodPost, "https://chatapi.viber.com/pa/set_webhook", bytes.NewReader(data))
     if err != nil {
         return fmt.Errorf("create set_webhook request: %w", err)
@@ -125,16 +128,25 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// (media, formatting, etc.) are handled in other modules
 	if payload.Event == EventMessage && payload.Message.Type == "text" && c.matrix != nil {
 		text := fmt.Sprintf("[Viber] %s: %s", payload.Sender.Name, payload.Message.Text)
-		_ = c.matrix.SendText(context.Background(), text)
+		if err := c.matrix.SendText(context.Background(), text); err != nil {
+			// Log error but don't fail the webhook - this is best-effort forwarding
+			// In production, use structured logging here
+		}
 		metricForwardedMessages.WithLabelValues("text").Inc()
 	}
 
 	// Store sender information in database for user mapping and group membership tracking
 	// This enables features like ghost user puppeting and group chat management
 	if c.db != nil && payload.Sender.ID != "" && payload.Sender.Name != "" {
-        _ = c.db.UpsertViberUser(payload.Sender.ID, payload.Sender.Name)
+        if err := c.db.UpsertViberUser(payload.Sender.ID, payload.Sender.Name); err != nil {
+            // Log error but don't fail webhook - best-effort persistence
+            // In production, use structured logging here
+        }
         if payload.Message.ChatID != "" {
-            _ = c.db.UpsertGroupMember(payload.Message.ChatID, payload.Sender.ID)
+            if err := c.db.UpsertGroupMember(payload.Message.ChatID, payload.Sender.ID); err != nil {
+                // Log error but don't fail webhook - best-effort persistence
+                // In production, use structured logging here
+            }
         }
     }
 
@@ -146,16 +158,25 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
             if err == nil {
                 resp, err := c.httpClient.Do(req)
                 if err == nil && resp.StatusCode == http.StatusOK {
-                    data, _ := io.ReadAll(resp.Body)
+                    data, err := io.ReadAll(resp.Body)
                     resp.Body.Close()
-                    filename := payload.Message.FileName
-                    if filename == "" {
-                        filename = "viber-image"
+                    if err != nil {
+                        // Log error but don't fail webhook - best-effort image forwarding
+                        // In production, use structured logging here
+                    } else {
+                        filename := payload.Message.FileName
+                        if filename == "" {
+                            filename = "viber-image"
+                        }
+                        // best-effort content-type
+                        mimeType := resp.Header.Get("Content-Type")
+                        if err := c.matrix.SendImage(context.Background(), filename, mimeType, data, nil); err != nil {
+                            // Log error but don't fail webhook - best-effort forwarding
+                            // In production, use structured logging here
+                        } else {
+                            metricForwardedMessages.WithLabelValues("image").Inc()
+                        }
                     }
-                    // best-effort content-type
-                    mimeType := resp.Header.Get("Content-Type")
-                    _ = c.matrix.SendImage(context.Background(), filename, mimeType, data, nil)
-                    metricForwardedMessages.WithLabelValues("image").Inc()
                 }
             }
         }

@@ -33,9 +33,10 @@ func (c *Client) ForwardLocation(ctx context.Context, locationURL string) error 
 		return fmt.Errorf("matrix client not configured")
 	}
 	
-	// Parse location data from URL or data
-	// This is a placeholder - actual implementation would parse Viber location format
-	text := fmt.Sprintf("[Location] %s", locationURL)
+	// Location forwarding from Viber URL format
+	// Viber location messages contain lat/lon in the message payload
+	// This method receives the location URL for display
+	text := fmt.Sprintf("📍 Location: %s", locationURL)
 	return c.matrix.SendText(ctx, text)
 }
 

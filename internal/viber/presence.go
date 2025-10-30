@@ -50,20 +50,25 @@ func (pm *PresenceManager) SyncPresenceFromViber(ctx context.Context, viberUserI
 }
 
 // SyncPresenceFromMatrix syncs presence from Matrix to Viber (if supported).
+// Viber API does not support presence updates from external sources.
 func (pm *PresenceManager) SyncPresenceFromMatrix(ctx context.Context, matrixUserID id.UserID, presence mautrix.Presence) error {
-	// Viber may not support presence updates via API
-	// This is a placeholder for future support
+	// Viber API does not support setting presence status programmatically
+	// Presence sync from Matrix to Viber is not possible with current Viber API
+	_ = ctx
 	_ = matrixUserID
 	_ = presence
-	return nil
+	return fmt.Errorf("Viber API does not support presence updates from external sources")
 }
 
 // GetViberPresence gets current presence for a Viber user (if available).
+// Viber API does not expose presence status directly.
 func (pm *PresenceManager) GetViberPresence(ctx context.Context, viberUserID string) (bool, error) {
-	// Viber API may not expose presence directly
-	// This would need to be inferred from activity or webhook events
-	// Placeholder for future implementation
-	return false, nil
+	// Viber API does not provide presence status queries
+	// Presence must be inferred from activity (recent messages, typing indicators)
+	// This requires tracking user activity in webhook events
+	_ = ctx
+	_ = viberUserID
+	return false, fmt.Errorf("Viber API does not expose presence status - must infer from activity")
 }
 
 // HandlePresenceUpdate handles a presence update from Viber webhook.

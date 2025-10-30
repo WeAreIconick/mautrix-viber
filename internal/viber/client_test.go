@@ -121,8 +121,9 @@ func TestEnsureWebhook(t *testing.T) {
 	ctx := context.Background()
 	// err := client.EnsureWebhook()
 	// Would need to verify webhook was registered
+	// Requires mock HTTP server to intercept API calls
 	_ = ctx
-	t.Log("Mock test setup - requires endpoint configuration")
+	t.Log("Mock test setup - requires endpoint configuration for webhook registration testing")
 }
 
 // TestWebhookHandler_EventTypes tests handling of different event types.

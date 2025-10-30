@@ -74,11 +74,15 @@ func pow(base, exp float64) float64 {
 
 // IsRetryable determines if an error is worth retrying.
 // Common retryable errors: network timeouts, 5xx errors, rate limits.
+// Currently returns true for all errors; can be enhanced to check specific error types.
 func IsRetryable(err error) bool {
 	if err == nil {
 		return false
 	}
-	// TODO: Check for specific error types (timeout, 5xx, rate limit)
+	// Could check for specific error types:
+	// - Network timeouts: errors.Is(err, context.DeadlineExceeded)
+	// - HTTP 5xx: check if err contains status code >= 500
+	// - Rate limits: check if err contains 429 status code
 	return true
 }
 

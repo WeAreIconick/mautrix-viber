@@ -4,6 +4,9 @@ package viber
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -68,6 +71,13 @@ func (owm *OutgoingWebhookManager) SendWebhook(ctx context.Context, eventType st
 	return nil
 }
 
+// calculateHMACSignature calculates HMAC-SHA256 signature for outgoing webhook payload.
+func calculateHMACSignature(payload []byte, secret string) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(payload)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
 // sendWebhook sends a single webhook.
 func (owm *OutgoingWebhookManager) sendWebhook(ctx context.Context, webhook OutgoingWebhook, eventType string, payload interface{}) error {
 	data, err := json.Marshal(payload)
@@ -85,7 +95,9 @@ func (owm *OutgoingWebhookManager) sendWebhook(ctx context.Context, webhook Outg
 	
 	// Add signature if secret is configured
 	if webhook.Secret != "" {
-		// TODO: Add HMAC signature
+		// Calculate HMAC-SHA256 signature of payload body
+		signature := calculateHMACSignature(data, webhook.Secret)
+		req.Header.Set("X-Webhook-Signature", signature)
 	}
 	
 	resp, err := owm.client.Do(req)

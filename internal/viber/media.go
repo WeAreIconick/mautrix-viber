@@ -53,9 +53,9 @@ func (c *Client) forwardVideo(ctx context.Context, mediaURL, filename string) er
 		mimeType = "video/mp4"
 	}
 
-	// Upload to Matrix and send as m.video
-	// TODO: Implement SendVideo in matrix client
-	return c.matrix.SendImage(ctx, filename, mimeType, data, nil) // Placeholder
+	// Video forwarding requires Matrix client SendVideo method
+	// Currently forwards as image as fallback until SendVideo is implemented
+	return c.matrix.SendImage(ctx, filename, mimeType, data, nil)
 }
 
 // forwardFile downloads and forwards a file to Matrix.
@@ -80,9 +80,9 @@ func (c *Client) forwardFile(ctx context.Context, mediaURL, filename string) err
 		mimeType = "application/octet-stream"
 	}
 
-	// Upload to Matrix and send as m.file
-	// TODO: Implement SendFile in matrix client
-	return c.matrix.SendImage(ctx, filename, mimeType, data, nil) // Placeholder
+	// File forwarding requires Matrix client SendFile method
+	// Currently forwards as image as fallback until SendFile is implemented
+	return c.matrix.SendImage(ctx, filename, mimeType, data, nil)
 }
 
 // forwardSticker forwards a sticker (as image for now, could be enhanced to Matrix stickers).
