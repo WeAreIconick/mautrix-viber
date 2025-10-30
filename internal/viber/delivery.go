@@ -65,7 +65,7 @@ func (dm *DeliveryManager) TrackRead(ctx context.Context, viberMsgID, userID str
 	_ = userID
 	
 	if dm.matrixClient != nil {
-		matrixEventID, err := dm.db.GetMatrixEventID(viberMsgID)
+		matrixEventID, err := dm.db.GetMatrixEventID(ctx, viberMsgID)
 		if err == nil && matrixEventID != "" {
 			// Requires Matrix client SendReadReceipt method
 			_ = matrixEventID

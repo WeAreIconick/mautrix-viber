@@ -33,7 +33,7 @@ func (rmm *RoomMetadataManager) SyncRoomName(ctx context.Context, viberChatID, n
 		return fmt.Errorf("database not configured")
 	}
 	
-	matrixRoomID, err := rmm.db.GetMatrixRoomID(viberChatID)
+	matrixRoomID, err := rmm.db.GetMatrixRoomID(ctx, viberChatID)
 	if err != nil || matrixRoomID == "" {
 		return fmt.Errorf("matrix room id not found for chat %s", viberChatID)
 	}
@@ -56,7 +56,7 @@ func (rmm *RoomMetadataManager) SyncRoomTopic(ctx context.Context, viberChatID, 
 		return fmt.Errorf("database not configured")
 	}
 	
-	matrixRoomID, err := rmm.db.GetMatrixRoomID(viberChatID)
+	matrixRoomID, err := rmm.db.GetMatrixRoomID(ctx, viberChatID)
 	if err != nil || matrixRoomID == "" {
 		return fmt.Errorf("matrix room id not found for chat %s", viberChatID)
 	}
@@ -79,7 +79,7 @@ func (rmm *RoomMetadataManager) SyncRoomAvatar(ctx context.Context, viberChatID,
 		return fmt.Errorf("database not configured")
 	}
 	
-	matrixRoomID, err := rmm.db.GetMatrixRoomID(viberChatID)
+	matrixRoomID, err := rmm.db.GetMatrixRoomID(ctx, viberChatID)
 	if err != nil || matrixRoomID == "" {
 		return fmt.Errorf("matrix room id not found for chat %s", viberChatID)
 	}
@@ -102,7 +102,7 @@ func (rmm *RoomMetadataManager) SyncAllMetadata(ctx context.Context, viberChatID
 		return fmt.Errorf("database not configured")
 	}
 	
-	matrixRoomID, err := rmm.db.GetMatrixRoomID(viberChatID)
+	matrixRoomID, err := rmm.db.GetMatrixRoomID(ctx, viberChatID)
 	if err != nil || matrixRoomID == "" {
 		return fmt.Errorf("matrix room id not found for chat %s", viberChatID)
 	}

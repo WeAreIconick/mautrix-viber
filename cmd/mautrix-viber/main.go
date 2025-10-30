@@ -13,6 +13,7 @@ import (
 	"maunium.net/go/mautrix/id"
 
 	"github.com/example/mautrix-viber/internal/api"
+	"github.com/example/mautrix-viber/internal/cache"
 	"github.com/example/mautrix-viber/internal/config"
 	"github.com/example/mautrix-viber/internal/database"
 	"github.com/example/mautrix-viber/internal/logger"
@@ -20,6 +21,7 @@ import (
 	"github.com/example/mautrix-viber/internal/middleware"
 	"github.com/example/mautrix-viber/internal/viber"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	_ "net/http/pprof" // Register pprof handlers when enabled
 )
 
 func main() {
@@ -50,8 +52,20 @@ func main() {
         logger.Info("matrix config incomplete; message relay will be disabled")
     }
 
-    // Open database
-    db, err := database.Open(env.DatabasePath)
+    // Initialize cache if configured
+    var cacheClient *cache.Cache
+    if env.RedisURL != "" {
+        c, err := cache.NewCache(env.RedisURL, env.CacheTTL)
+        if err != nil {
+            log.Fatalf("failed to initialize cache: %v", err)
+        }
+        cacheClient = c
+        defer cacheClient.Close()
+        logger.Info("redis cache initialized", "ttl", env.CacheTTL)
+    }
+
+    // Open database with optional cache
+    db, err := database.OpenWithCache(env.DatabasePath, cacheClient)
     if err != nil {
         log.Fatalf("failed to open database: %v", err)
     }
@@ -100,13 +114,23 @@ func main() {
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/api/info", api.InfoHandler)
 	mux.HandleFunc("/viber/webhook", v.WebhookHandler)
+	
+	// pprof endpoints are automatically registered via blank import above
+	// Access at /debug/pprof/ when ENABLE_PPROF=true
+	// In production, disable via environment variable or protect with auth
+	if os.Getenv("ENABLE_PPROF") == "true" {
+		logger.Info("pprof endpoints enabled at /debug/pprof/ (heap, cpu, goroutine, etc.)")
+	}
 
-	// Build middleware chain: recovery -> request ID -> logging -> rate limit -> body size
+	// Build middleware chain: recovery -> request ID -> body logging (optional) -> logging -> rate limit -> body size
 	middlewareChain := withServerMiddleware(
 		withRateLimit(
-			middleware.LoggingMiddleware(
-				middleware.RequestIDMiddleware(
-					middleware.RecoveryMiddleware(mux),
+			withOptionalBodyLogging(
+				env.EnableRequestLogging,
+				middleware.LoggingMiddleware(
+					middleware.RequestIDMiddleware(
+						middleware.RecoveryMiddleware(mux),
+					),
 				),
 			),
 		),
@@ -168,5 +192,14 @@ func withRateLimit(next http.Handler) http.Handler {
         }
         next.ServeHTTP(w, r)
     })
+}
+
+// withOptionalBodyLogging conditionally adds request body logging middleware.
+// Only enabled via ENABLE_REQUEST_LOGGING=true flag (disabled by default).
+func withOptionalBodyLogging(enabled bool, next http.Handler) http.Handler {
+    if !enabled {
+        return next
+    }
+    return middleware.RequestBodyLoggingMiddleware(next)
 }
 

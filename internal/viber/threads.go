@@ -37,7 +37,7 @@ func (tm *ThreadManager) HandleReply(ctx context.Context, roomID id.RoomID, repl
 	}
 	
 	// Get original Matrix event ID from database
-	originalEventID, err := tm.db.GetMatrixEventID(replyToViberMsgID)
+	originalEventID, err := tm.db.GetMatrixEventID(ctx, replyToViberMsgID)
 	if err != nil {
 		return fmt.Errorf("get original event id: %w", err)
 	}

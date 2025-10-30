@@ -1,6 +1,7 @@
 package database_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"github.com/example/mautrix-viber/internal/database"
@@ -35,14 +36,15 @@ func ExampleDB_UpsertViberUser() {
 	defer os.Remove(dbPath) // Cleanup
 	
 	// Upsert a Viber user
-	err = db.UpsertViberUser("user123", "Alice")
+	ctx := context.Background()
+	err = db.UpsertViberUser(ctx, "user123", "Alice")
 	if err != nil {
 		fmt.Printf("Failed to upsert user: %v\n", err)
 		return
 	}
 	
 	// Retrieve the user
-	user, err := db.GetViberUser("user123")
+	user, err := db.GetViberUser(ctx, "user123")
 	if err != nil {
 		fmt.Printf("Failed to get user: %v\n", err)
 		return

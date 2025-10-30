@@ -109,13 +109,13 @@ func TestEnsureWebhook(t *testing.T) {
 	}))
 	defer server.Close()
 	
-	client := NewClient(Config{
+	_ = NewClient(Config{
 		APIToken:   "test-token",
 		WebhookURL: "https://example.com/webhook",
 	}, nil, nil)
 	
-	// Replace client HTTP endpoint for testing
-	// Note: This would require making the endpoint configurable
+	// Client created for testing
+	// Note: This would require making the endpoint configurable for actual testing
 	
 	// Test webhook registration
 	ctx := context.Background()

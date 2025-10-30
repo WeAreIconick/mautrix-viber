@@ -19,7 +19,7 @@ func (c *Client) HandleDeletion(ctx context.Context, viberMsgID string) error {
 	}
 	
 	// Get Matrix event ID from database
-	matrixEventID, err := c.db.GetMatrixEventID(viberMsgID)
+	matrixEventID, err := c.db.GetMatrixEventID(ctx, viberMsgID)
 	if err != nil {
 		return fmt.Errorf("get matrix event id: %w", err)
 	}

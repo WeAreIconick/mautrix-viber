@@ -143,7 +143,7 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 		text := fmt.Sprintf("[Viber] %s: %s", payload.Sender.Name, payload.Message.Text)
 		if err := c.matrix.SendText(r.Context(), text); err != nil {
 			// Log error but don't fail the webhook - this is best-effort forwarding
-			logger.Warn("failed to forward text message to Matrix",
+			logger.WarnWithContext(r.Context(), "failed to forward text message to Matrix",
 				"error", err,
 				"sender", payload.Sender.Name,
 				"event", payload.Event,
@@ -159,18 +159,18 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// Store sender information in database for user mapping and group membership tracking
 	// This enables features like ghost user puppeting and group chat management
 	if c.db != nil && payload.Sender.ID != "" && payload.Sender.Name != "" {
-        if err := c.db.UpsertViberUser(payload.Sender.ID, payload.Sender.Name); err != nil {
+        if err := c.db.UpsertViberUser(r.Context(), payload.Sender.ID, payload.Sender.Name); err != nil {
             // Log error but don't fail webhook - best-effort persistence
-            logger.Warn("failed to upsert Viber user",
+            logger.WarnWithContext(r.Context(), "failed to upsert Viber user",
                 "error", err,
                 "viber_user_id", payload.Sender.ID,
                 "viber_user_name", payload.Sender.Name,
             )
         }
         if payload.Message.ChatID != "" {
-            if err := c.db.UpsertGroupMember(payload.Message.ChatID, payload.Sender.ID); err != nil {
+            if err := c.db.UpsertGroupMember(r.Context(), payload.Message.ChatID, payload.Sender.ID); err != nil {
                 // Log error but don't fail webhook - best-effort persistence
-                logger.Warn("failed to upsert group member",
+                logger.WarnWithContext(r.Context(), "failed to upsert group member",
                     "error", err,
                     "chat_id", payload.Message.ChatID,
                     "user_id", payload.Sender.ID,
@@ -191,7 +191,7 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
                     resp.Body.Close()
                     if err != nil {
                         // Log error but don't fail webhook - best-effort image forwarding
-                        logger.Warn("failed to read image data from media URL",
+                        logger.WarnWithContext(r.Context(), "failed to read image data from media URL",
                             "error", err,
                             "media_url", payload.Message.Media,
                             "event", payload.Event,
@@ -205,7 +205,7 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
                         mimeType := resp.Header.Get("Content-Type")
                         if err := c.matrix.SendImage(r.Context(), filename, mimeType, data, nil); err != nil {
                             // Log error but don't fail webhook - best-effort forwarding
-                            logger.Warn("failed to forward image to Matrix",
+                            logger.WarnWithContext(r.Context(), "failed to forward image to Matrix",
                                 "error", err,
                                 "filename", filename,
                                 "sender", payload.Sender.Name,

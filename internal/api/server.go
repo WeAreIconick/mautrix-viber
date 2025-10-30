@@ -46,7 +46,7 @@ func (s *APIServer) handleUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Query database for linked users
-	users, err := s.db.ListLinkedUsers()
+	users, err := s.db.ListLinkedUsers(r.Context())
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to list users: %v", err), http.StatusInternalServerError)
 		return
@@ -85,7 +85,7 @@ func (s *APIServer) handleRooms(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Query database for room mappings
-	rooms, err := s.db.ListRoomMappings()
+	rooms, err := s.db.ListRoomMappings(r.Context())
 	if err != nil {
 		http.Error(w, fmt.Sprintf("failed to list rooms: %v", err), http.StatusInternalServerError)
 		return
@@ -134,7 +134,7 @@ func (s *APIServer) handleLink(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Link the user
-	if err := s.db.LinkViberUser(req.ViberUserID, req.MatrixUserID); err != nil {
+	if err := s.db.LinkViberUser(r.Context(), req.ViberUserID, req.MatrixUserID); err != nil {
 		http.Error(w, fmt.Sprintf("failed to link user: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -174,7 +174,7 @@ func (s *APIServer) handleUnlink(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Unlink by setting matrix_user_id to NULL
-	if err := s.db.UnlinkMatrixUser(req.MatrixUserID); err != nil {
+	if err := s.db.UnlinkMatrixUser(r.Context(), req.MatrixUserID); err != nil {
 		http.Error(w, fmt.Sprintf("failed to unlink user: %v", err), http.StatusInternalServerError)
 		return
 	}

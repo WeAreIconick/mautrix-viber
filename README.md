@@ -172,6 +172,10 @@ ngrok http 8080
 | `HTTP_CLIENT_TIMEOUT` | HTTP client timeout in seconds (default: `15`) | No |
 | `LOG_LEVEL` | Log level: debug, info, warn, error (default: `info`) | No |
 | `VIBER_DEFAULT_RECEIVER_ID` | Default Viber user ID for Matrix → Viber forwarding | Optional |
+| `REDIS_URL` | Redis URL for caching (optional, e.g. `redis://localhost:6379`) | No |
+| `CACHE_TTL` | Cache TTL in minutes (default: `5`) | No |
+| `ENABLE_PPROF` | Enable pprof endpoints for debugging (default: `false`) | No |
+| `ENABLE_REQUEST_LOGGING` | Enable request/response body logging for debugging (default: `false`) | No |
 
 ### YAML Configuration File
 

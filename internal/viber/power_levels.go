@@ -39,7 +39,7 @@ func (plm *PowerLevelManager) SyncPowerLevels(ctx context.Context, viberChatID s
 		return fmt.Errorf("database not configured")
 	}
 	
-	matrixRoomID, err := plm.db.GetMatrixRoomID(viberChatID)
+	matrixRoomID, err := plm.db.GetMatrixRoomID(ctx, viberChatID)
 	if err != nil || matrixRoomID == "" {
 		return fmt.Errorf("matrix room id not found for chat %s", viberChatID)
 	}

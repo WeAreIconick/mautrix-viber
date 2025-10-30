@@ -5,9 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/example/mautrix-viber/internal/logger"
 )
 
 // LoggingMiddleware logs HTTP requests with structured logging.
+// Includes request ID for distributed tracing.
 func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -19,7 +22,10 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		
 		duration := time.Since(start)
 		
-		// Log request
+		// Get request ID from context if available
+		requestID := logger.GetRequestID(r.Context())
+		
+		// Log request with context
 		slog.Info("HTTP request",
 			"method", r.Method,
 			"path", r.URL.Path,
@@ -27,6 +33,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			"duration_ms", duration.Milliseconds(),
 			"remote_addr", r.RemoteAddr,
 			"user_agent", r.UserAgent(),
+			"request_id", requestID,
 		)
 	})
 }

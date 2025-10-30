@@ -4,13 +4,9 @@ package config
 
 import (
 	"fmt"
-	"net/url"
 	"os"
-	"strings"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/example/mautrix-viber/internal/utils"
 )
 
 // FileConfig represents configuration from a YAML file.
@@ -84,65 +80,6 @@ func LoadFromFile(path string) (Config, error) {
 	}
 	
 	return cfg, nil
-}
-
-// Validate checks configuration for required fields and valid values.
-// This is an enhanced version that also validates URLs and enforces HTTPS for production.
-func (c Config) Validate() error {
-	var errors []string
-	
-	// Viber configuration validation
-	if c.APIToken == "" {
-		errors = append(errors, "VIBER_API_TOKEN is required")
-	}
-	
-	if c.WebhookURL == "" {
-		errors = append(errors, "VIBER_WEBHOOK_URL is required")
-	} else {
-		if _, err := url.Parse(c.WebhookURL); err != nil {
-			errors = append(errors, fmt.Sprintf("VIBER_WEBHOOK_URL is invalid: %v", err))
-		}
-		// In production, webhook URL should be HTTPS
-		if !strings.HasPrefix(c.WebhookURL, "https://") {
-			errors = append(errors, "VIBER_WEBHOOK_URL should use HTTPS in production")
-		}
-	}
-	
-	if c.ListenAddress == "" {
-		c.ListenAddress = ":8080" // Use default if not set
-	}
-	
-	// Matrix configuration validation (required if bridging)
-	hasMatrixConfig := c.MatrixHomeserverURL != "" || c.MatrixAccessToken != "" || c.MatrixDefaultRoomID != ""
-	if hasMatrixConfig {
-		// Validate Matrix homeserver URL format
-		if c.MatrixHomeserverURL == "" {
-			errors = append(errors, "MATRIX_HOMESERVER_URL is required when Matrix bridging is enabled")
-		} else {
-			if _, err := url.Parse(c.MatrixHomeserverURL); err != nil {
-				errors = append(errors, fmt.Sprintf("MATRIX_HOMESERVER_URL is invalid: %v", err))
-			}
-		}
-		
-		if c.MatrixAccessToken == "" {
-			errors = append(errors, "MATRIX_ACCESS_TOKEN is required when Matrix bridging is enabled")
-		}
-		
-		if c.MatrixDefaultRoomID == "" {
-			errors = append(errors, "MATRIX_DEFAULT_ROOM_ID is required when Matrix bridging is enabled")
-		} else {
-			// Validate Matrix room ID format using regex
-			if err := utils.ValidateMatrixRoomID(c.MatrixDefaultRoomID); err != nil {
-				errors = append(errors, fmt.Sprintf("MATRIX_DEFAULT_ROOM_ID has invalid format: %v", err))
-			}
-		}
-	}
-	
-	if len(errors) > 0 {
-		return fmt.Errorf("configuration validation failed:\n  %s", strings.Join(errors, "\n  "))
-	}
-	
-	return nil
 }
 
 

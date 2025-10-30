@@ -155,7 +155,7 @@ func (h *Handler) handleLink(ctx context.Context, args []string, roomID id.RoomI
 	matrixUserID := string(userID)
 	
 	// Check if Viber user exists
-	user, err := h.db.GetViberUser(viberUserID)
+	user, err := h.db.GetViberUser(ctx, viberUserID)
 	if err != nil {
 		return "", fmt.Errorf("failed to check Viber user: %w", err)
 	}
@@ -164,7 +164,7 @@ func (h *Handler) handleLink(ctx context.Context, args []string, roomID id.RoomI
 	}
 	
 	// Link the user
-	if err := h.db.LinkViberUser(viberUserID, matrixUserID); err != nil {
+	if err := h.db.LinkViberUser(ctx, viberUserID, matrixUserID); err != nil {
 		return "", fmt.Errorf("failed to link user: %w", err)
 	}
 	
@@ -196,7 +196,7 @@ func (h *Handler) unlinkMatrixUser(ctx context.Context, matrixUserID string) err
 	if h.db == nil {
 		return fmt.Errorf("database not configured")
 	}
-	return h.db.UnlinkMatrixUser(matrixUserID)
+	return h.db.UnlinkMatrixUser(ctx, matrixUserID)
 }
 
 func (h *Handler) handleStatus(ctx context.Context, args []string, roomID id.RoomID, userID id.UserID) (string, error) {

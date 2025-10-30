@@ -40,7 +40,7 @@ func (gm *GroupChatManager) HandleGroupMessage(ctx context.Context, chatID strin
 	}
 	
 	// Get or create Matrix room for this Viber group
-	matrixRoomID, err := gm.db.GetMatrixRoomID(chatID)
+	matrixRoomID, err := gm.db.GetMatrixRoomID(ctx, chatID)
 	if err != nil {
 		return fmt.Errorf("get matrix room id: %w", err)
 	}
@@ -59,13 +59,13 @@ func (gm *GroupChatManager) HandleGroupMessage(ctx context.Context, chatID strin
 		matrixRoomID = string(room.MatrixRoomID)
 		
 		// Store room mapping
-		if err := gm.db.CreateRoomMapping(chatID, matrixRoomID); err != nil {
+		if err := gm.db.CreateRoomMapping(ctx, chatID, matrixRoomID); err != nil {
 			return fmt.Errorf("create room mapping: %w", err)
 		}
 	}
 	
 	// Ensure sender is in group members
-	if err := gm.db.UpsertGroupMember(chatID, senderID); err != nil {
+	if err := gm.db.UpsertGroupMember(ctx, chatID, senderID); err != nil {
 		return fmt.Errorf("upsert group member: %w", err)
 	}
 	
@@ -84,13 +84,13 @@ func (gm *GroupChatManager) SyncGroupMembers(ctx context.Context, chatID string)
 		return fmt.Errorf("database not configured")
 	}
 	
-	matrixRoomID, err := gm.db.GetMatrixRoomID(chatID)
+	matrixRoomID, err := gm.db.GetMatrixRoomID(ctx, chatID)
 	if err != nil || matrixRoomID == "" {
 		return fmt.Errorf("matrix room id not found for chat %s", chatID)
 	}
 	
 	// Get all group members
-	_, err = gm.db.ListGroupMembers(chatID)
+	_, err = gm.db.ListGroupMembers(ctx, chatID)
 	if err != nil {
 		return fmt.Errorf("list group members: %w", err)
 	}
@@ -108,7 +108,7 @@ func (gm *GroupChatManager) AddGroupMember(ctx context.Context, chatID, userID s
 		return fmt.Errorf("database not configured")
 	}
 	
-	if err := gm.db.UpsertGroupMember(chatID, userID); err != nil {
+	if err := gm.db.UpsertGroupMember(ctx, chatID, userID); err != nil {
 		return fmt.Errorf("add group member: %w", err)
 	}
 	

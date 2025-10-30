@@ -2,6 +2,7 @@
 package database
 
 import (
+	"context"
 	"os"
 	"testing"
 )
@@ -17,14 +18,16 @@ func TestUpsertViberUser(t *testing.T) {
 	}
 	defer db.Close()
 	
+	ctx := context.Background()
+	
 	// Test upsert
-	err = db.UpsertViberUser("test_user_1", "Test User")
+	err = db.UpsertViberUser(ctx, "test_user_1", "Test User")
 	if err != nil {
 		t.Fatalf("Failed to upsert user: %v", err)
 	}
 	
 	// Test retrieval
-	user, err := db.GetViberUser("test_user_1")
+	user, err := db.GetViberUser(ctx, "test_user_1")
 	if err != nil {
 		t.Fatalf("Failed to get user: %v", err)
 	}
@@ -38,12 +41,12 @@ func TestUpsertViberUser(t *testing.T) {
 	}
 	
 	// Test update
-	err = db.UpsertViberUser("test_user_1", "Updated Name")
+	err = db.UpsertViberUser(ctx, "test_user_1", "Updated Name")
 	if err != nil {
 		t.Fatalf("Failed to update user: %v", err)
 	}
 	
-	user, err = db.GetViberUser("test_user_1")
+	user, err = db.GetViberUser(ctx, "test_user_1")
 	if err != nil {
 		t.Fatalf("Failed to get updated user: %v", err)
 	}
@@ -63,14 +66,16 @@ func TestRoomMapping(t *testing.T) {
 	}
 	defer db.Close()
 	
+	ctx := context.Background()
+	
 	// Test create mapping
-	err = db.CreateRoomMapping("viber_chat_1", "!matrix_room_1:example.com")
+	err = db.CreateRoomMapping(ctx, "viber_chat_1", "!matrix_room_1:example.com")
 	if err != nil {
 		t.Fatalf("Failed to create mapping: %v", err)
 	}
 	
 	// Test retrieval
-	matrixRoomID, err := db.GetMatrixRoomID("viber_chat_1")
+	matrixRoomID, err := db.GetMatrixRoomID(ctx, "viber_chat_1")
 	if err != nil {
 		t.Fatalf("Failed to get matrix room id: %v", err)
 	}
@@ -80,7 +85,7 @@ func TestRoomMapping(t *testing.T) {
 	}
 	
 	// Test reverse lookup
-	viberChatID, err := db.GetViberChatID("!matrix_room_1:example.com")
+	viberChatID, err := db.GetViberChatID(ctx, "!matrix_room_1:example.com")
 	if err != nil {
 		t.Fatalf("Failed to get viber chat id: %v", err)
 	}
@@ -100,20 +105,22 @@ func TestMessageMapping(t *testing.T) {
 	}
 	defer db.Close()
 	
+	ctx := context.Background()
+	
 	// Create room mapping first
-	err = db.CreateRoomMapping("viber_chat_1", "!room:example.com")
+	err = db.CreateRoomMapping(ctx, "viber_chat_1", "!room:example.com")
 	if err != nil {
 		t.Fatalf("Failed to create room mapping: %v", err)
 	}
 	
 	// Test store message mapping
-	err = db.StoreMessageMapping("viber_msg_123", "$matrix_event_456", "viber_chat_1")
+	err = db.StoreMessageMapping(ctx, "viber_msg_123", "$matrix_event_456", "viber_chat_1")
 	if err != nil {
 		t.Fatalf("Failed to store message mapping: %v", err)
 	}
 	
 	// Test retrieval
-	matrixEventID, err := db.GetMatrixEventID("viber_msg_123")
+	matrixEventID, err := db.GetMatrixEventID(ctx, "viber_msg_123")
 	if err != nil {
 		t.Fatalf("Failed to get matrix event id: %v", err)
 	}
@@ -133,19 +140,21 @@ func TestGroupMembers(t *testing.T) {
 	}
 	defer db.Close()
 	
+	ctx := context.Background()
+	
 	// Test upsert group member
-	err = db.UpsertGroupMember("chat_1", "user_1")
+	err = db.UpsertGroupMember(ctx, "chat_1", "user_1")
 	if err != nil {
 		t.Fatalf("Failed to upsert group member: %v", err)
 	}
 	
-	err = db.UpsertGroupMember("chat_1", "user_2")
+	err = db.UpsertGroupMember(ctx, "chat_1", "user_2")
 	if err != nil {
 		t.Fatalf("Failed to upsert second group member: %v", err)
 	}
 	
 	// Test list members
-	members, err := db.ListGroupMembers("chat_1")
+	members, err := db.ListGroupMembers(ctx, "chat_1")
 	if err != nil {
 		t.Fatalf("Failed to list group members: %v", err)
 	}
@@ -181,20 +190,22 @@ func TestLinkViberUser(t *testing.T) {
 	}
 	defer db.Close()
 	
+	ctx := context.Background()
+	
 	// Create user first
-	err = db.UpsertViberUser("viber_user_1", "Viber User")
+	err = db.UpsertViberUser(ctx, "viber_user_1", "Viber User")
 	if err != nil {
 		t.Fatalf("Failed to create user: %v", err)
 	}
 	
 	// Link to Matrix user
-	err = db.LinkViberUser("viber_user_1", "@matrix_user:example.com")
+	err = db.LinkViberUser(ctx, "viber_user_1", "@matrix_user:example.com")
 	if err != nil {
 		t.Fatalf("Failed to link user: %v", err)
 	}
 	
 	// Retrieve and verify
-	user, err := db.GetViberUser("viber_user_1")
+	user, err := db.GetViberUser(ctx, "viber_user_1")
 	if err != nil {
 		t.Fatalf("Failed to get user: %v", err)
 	}

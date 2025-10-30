@@ -39,7 +39,7 @@ func (bm *BackfillManager) BackfillChatHistory(ctx context.Context, viberChatID,
 	// When available, this would fetch recent messages and forward them to Matrix
 	
 	// Store room mapping if not exists
-	if err := bm.db.CreateRoomMapping(viberChatID, matrixRoomID); err != nil {
+	if err := bm.db.CreateRoomMapping(ctx, viberChatID, matrixRoomID); err != nil {
 		// Ignore if mapping already exists - this is expected if mapping already exists
 		// Log at debug level since this is not an error condition
 	}
@@ -63,13 +63,13 @@ func (bm *BackfillManager) SetMaxMessages(max int) {
 }
 
 // ShouldBackfill determines if backfilling should be performed for a room.
-func (bm *BackfillManager) ShouldBackfill(matrixRoomID string) bool {
+func (bm *BackfillManager) ShouldBackfill(ctx context.Context, matrixRoomID string) bool {
 	if bm.db == nil {
 		return false
 	}
 	
 	// Check if room mapping already exists
-	viberChatID, err := bm.db.GetViberChatID(matrixRoomID)
+	viberChatID, err := bm.db.GetViberChatID(ctx, matrixRoomID)
 	if err != nil || viberChatID == "" {
 		return true // New room, should backfill
 	}
