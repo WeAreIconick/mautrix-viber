@@ -59,6 +59,6 @@ func ExampleValidateURL() {
 	}
 	// Output:
 	// Valid URL
-	// Error: invalid URL: parse "example.com": invalid URI for request
+	// Error: URL must use http or https scheme
 }
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/example/mautrix-viber/internal/api"
+	"github.com/example/mautrix-viber/internal/middleware"
 	"github.com/example/mautrix-viber/internal/viber"
 )
 
@@ -92,11 +93,14 @@ func TestRecoveryMiddleware(t *testing.T) {
 		panic("test panic")
 	})
 
+	// Wrap with recovery middleware
+	recoveryHandler := middleware.RecoveryMiddleware(panickingHandler)
+
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
 	w := httptest.NewRecorder()
 
 	// Should recover from panic and return 500
-	panickingHandler.ServeHTTP(w, req)
+	recoveryHandler.ServeHTTP(w, req)
 
 	if w.Code != http.StatusInternalServerError {
 		t.Errorf("Expected status 500 after panic, got %d", w.Code)

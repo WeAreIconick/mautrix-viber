@@ -62,17 +62,17 @@ func TestCircuitBreaker_HalfOpenRecovery(t *testing.T) {
 	// Wait for timeout
 	time.Sleep(100 * time.Millisecond)
 	
-	// Should transition to half-open
-	if cb.GetState() != StateHalfOpen {
-		t.Errorf("Expected state HalfOpen, got %v", cb.GetState())
-	}
-	
-	// Success should close it
+	// Execute should transition to half-open state when called
 	err := cb.Execute(func() error {
 		return nil
 	})
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
+	}
+	
+	// First success in half-open should keep it in half-open (need 2 successes)
+	if cb.GetState() != StateHalfOpen {
+		t.Errorf("Expected state HalfOpen after first success, got %v", cb.GetState())
 	}
 	
 	// Second success should close it
@@ -83,6 +83,7 @@ func TestCircuitBreaker_HalfOpenRecovery(t *testing.T) {
 		t.Errorf("Expected no error, got %v", err)
 	}
 	
+	// After second success, should transition to Closed
 	if cb.GetState() != StateClosed {
 		t.Errorf("Expected state Closed, got %v", cb.GetState())
 	}

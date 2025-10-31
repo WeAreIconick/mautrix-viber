@@ -142,6 +142,12 @@ func TestGroupMembers(t *testing.T) {
 	
 	ctx := context.Background()
 	
+	// Create room mapping first (required foreign key)
+	err = db.CreateRoomMapping(ctx, "chat_1", "!room1:example.com")
+	if err != nil {
+		t.Fatalf("Failed to create room mapping: %v", err)
+	}
+	
 	// Test upsert group member
 	err = db.UpsertGroupMember(ctx, "chat_1", "user_1")
 	if err != nil {

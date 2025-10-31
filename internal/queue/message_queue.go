@@ -69,7 +69,7 @@ func (q *Queue) worker(id int) {
 		if err != nil && job.Retries < job.MaxRetries {
 			// Retry with exponential backoff
 			job.Retries++
-			delay := time.Duration(job.Retries) * time.Second
+			delay := time.Duration(job.Retries) * 100 * time.Millisecond
 			time.Sleep(delay)
 			q.Enqueue(job)
 		}
