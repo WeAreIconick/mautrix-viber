@@ -62,7 +62,7 @@ func OpenWithCache(path string, cache CacheInterface) (*DB, error) {
 			delay := time.Duration(100*(1<<uint(attempt-1))) * time.Millisecond
 			select {
 			case <-ctx.Done():
-				db.Close()
+				_ = db.Close()
 				return nil, fmt.Errorf("database ping timeout: %w", pingErr)
 			case <-time.After(delay):
 			}
@@ -78,7 +78,7 @@ func OpenWithCache(path string, cache CacheInterface) (*DB, error) {
 	}
 
 	if pingErr != nil {
-		db.Close()
+		_ = db.Close()
 		return nil, fmt.Errorf("ping database after retries: %w", pingErr)
 	}
 	d := &DB{db: db, cache: cache}
@@ -316,7 +316,7 @@ func (d *DB) ListLinkedUsers(ctx context.Context) ([]*ViberUser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query linked users: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var users []*ViberUser
 	for rows.Next() {
@@ -458,7 +458,7 @@ func (d *DB) ListRoomMappings(ctx context.Context) ([]RoomMapping, error) {
 	if err != nil {
 		return nil, fmt.Errorf("query room mappings: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var mappings []RoomMapping
 	for rows.Next() {
@@ -566,7 +566,7 @@ func (d *DB) ListGroupMembers(ctx context.Context, viberChatID string) ([]string
 	if err != nil {
 		return nil, fmt.Errorf("query group members for chat %s: %w", viberChatID, err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var members []string
 	for rows.Next() {

@@ -17,7 +17,7 @@ func healthHandler(db *database.DB, viberClient *viber.Client) http.HandlerFunc 
 		// Quick health check - just verify we can respond
 		// More detailed checks are in readinessHandler
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}
 }
 
@@ -51,13 +51,13 @@ func readinessHandler(db *database.DB, viberClient *viber.Client, mxClient *imat
 		// Check Matrix client if configured
 		// Note: We don't fail if Matrix is optional, but we check if it's supposed to be there
 
-		if len(issues) > 0 {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte("Not ready: " + issues[0]))
-			return
-		}
+	if len(issues) > 0 {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = w.Write([]byte("Not ready: " + issues[0]))
+		return
+	}
 
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Ready"))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte("Ready"))
 	}
 }

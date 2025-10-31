@@ -39,6 +39,8 @@ func (sm *SearchManager) SearchMessages(ctx context.Context, query string, limit
 		return nil, fmt.Errorf("database not configured")
 	}
 
+	// Validate limit (unused but kept for API consistency)
+	_ = limit
 	if limit <= 0 || limit > 100 {
 		limit = 50 // Default limit
 	}
@@ -61,6 +63,8 @@ func (sm *SearchManager) SearchBySender(ctx context.Context, senderID string, li
 		return nil, fmt.Errorf("database not configured")
 	}
 
+	// Validate limit (unused but kept for API consistency)
+	_ = limit
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}

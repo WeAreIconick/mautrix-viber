@@ -59,12 +59,9 @@ func (rc *ReloadableConfig) listenForReload() {
 	signal.Notify(sigChan, syscall.SIGHUP)
 
 	for range sigChan {
-		if err := rc.Reload(); err != nil {
-			// Log error - in production use structured logging
-			// logger.Error("failed to reload configuration", "error", err)
-		} else {
-			// Log success - in production use structured logging
-			// logger.Info("configuration reloaded successfully")
-		}
+		// Reload configuration on SIGHUP
+		// Errors are currently not logged as logger is not available in this package
+		// In production, this would use structured logging
+		_ = rc.Reload()
 	}
 }

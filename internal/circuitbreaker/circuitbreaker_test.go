@@ -29,7 +29,7 @@ func TestCircuitBreaker_OpenAfterFailures(t *testing.T) {
 
 	// Fail 3 times
 	for i := 0; i < 3; i++ {
-		cb.Execute(func() error {
+		_ = cb.Execute(func() error {
 			return errors.New("test error")
 		})
 	}
@@ -94,7 +94,7 @@ func TestCircuitBreaker_Reset(t *testing.T) {
 
 	// Open it
 	for i := 0; i < 2; i++ {
-		cb.Execute(func() error {
+		_ = cb.Execute(func() error {
 			return errors.New("test error")
 		})
 	}

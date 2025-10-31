@@ -21,7 +21,7 @@ func TestHealthHandler(t *testing.T) {
 	// Simple health check should always return 200
 	handler := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 	}
 
 	handler(w, req)

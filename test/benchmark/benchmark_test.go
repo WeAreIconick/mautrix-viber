@@ -32,16 +32,16 @@ func BenchmarkDatabaseUpsert(b *testing.B) {
 // BenchmarkDatabaseQuery benchmarks user retrieval.
 func BenchmarkDatabaseQuery(b *testing.B) {
 	dbPath := "/tmp/benchmark_query.db"
-	defer os.Remove(dbPath)
-
+	defer func() { _ = os.Remove(dbPath) }()
+	
 	db, err := database.Open(dbPath)
 	if err != nil {
 		b.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
-
+	defer func() { _ = db.Close() }()
+	
 	// Pre-populate
-	db.UpsertViberUser(context.Background(), "bench_user", "Bench User")
+	_ = db.UpsertViberUser(context.Background(), "bench_user", "Bench User")
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

@@ -98,14 +98,14 @@ func TestEnsureWebhook(t *testing.T) {
 			t.Errorf("Unexpected path: %s", r.URL.Path)
 		}
 
-		var req map[string]interface{}
-		json.NewDecoder(r.Body).Decode(&req)
+	var req map[string]interface{}
+	_ = json.NewDecoder(r.Body).Decode(&req)
 
-		response := map[string]interface{}{
-			"status":         0,
-			"status_message": "ok",
-		}
-		json.NewEncoder(w).Encode(response)
+	response := map[string]interface{}{
+		"status":         0,
+		"status_message": "ok",
+	}
+	_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
@@ -129,7 +129,7 @@ func TestEnsureWebhook(t *testing.T) {
 // TestWebhookHandler_EventTypes tests handling of different event types.
 func TestWebhookHandler_EventTypes(t *testing.T) {
 	db, _ := database.Open("/tmp/test_events.db")
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	client := NewClient(Config{APIToken: "test"}, nil, db)
 

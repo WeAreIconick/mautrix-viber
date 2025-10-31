@@ -65,11 +65,9 @@ func (owm *OutgoingWebhookManager) SendWebhook(ctx context.Context, eventType st
 		}
 
 		// Send webhook
-		if err := owm.sendWebhook(ctx, webhook, eventType, payload); err != nil {
-			// Log error but continue with other webhooks
-			// Note: Logger would be imported if this package needs logging
-			// For now, errors are returned but not logged at this level
-		}
+		// Errors are not logged here to avoid circular dependencies
+		// Individual webhook failures are not critical for overall operation
+		_ = owm.sendWebhook(ctx, webhook, eventType, payload)
 	}
 
 	return nil

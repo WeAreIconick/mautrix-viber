@@ -39,10 +39,8 @@ func (bm *BackfillManager) BackfillChatHistory(ctx context.Context, viberChatID,
 	// When available, this would fetch recent messages and forward them to Matrix
 
 	// Store room mapping if not exists
-	if err := bm.db.CreateRoomMapping(ctx, viberChatID, matrixRoomID); err != nil {
-		// Ignore if mapping already exists - this is expected if mapping already exists
-		// Log at debug level since this is not an error condition
-	}
+	// Ignore if mapping already exists - this is expected if mapping already exists
+	_ = bm.db.CreateRoomMapping(ctx, viberChatID, matrixRoomID)
 
 	return nil
 }

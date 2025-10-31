@@ -77,7 +77,7 @@ func TestConcurrentOperations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Simulate concurrent writes
 	ctx := context.Background()
@@ -124,7 +124,7 @@ func TestMessageDeduplication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	viberMsgID := "msg_123"
 	matrixEventID1 := "$event_1"
@@ -165,7 +165,7 @@ func TestContextCancellation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)

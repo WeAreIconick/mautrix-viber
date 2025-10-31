@@ -8,20 +8,20 @@ import (
 
 func TestFromEnv(t *testing.T) {
 	// Set test environment variables
-	os.Setenv("VIBER_API_TOKEN", "test-token")
-	os.Setenv("VIBER_WEBHOOK_URL", "https://test.com/webhook")
-	os.Setenv("LISTEN_ADDRESS", ":9090")
-	os.Setenv("MATRIX_HOMESERVER_URL", "https://matrix.test.com")
-	os.Setenv("MATRIX_ACCESS_TOKEN", "test-access-token")
-	os.Setenv("MATRIX_DEFAULT_ROOM_ID", "!test:test.com")
+	_ = os.Setenv("VIBER_API_TOKEN", "test-token")
+	_ = os.Setenv("VIBER_WEBHOOK_URL", "https://test.com/webhook")
+	_ = os.Setenv("LISTEN_ADDRESS", ":9090")
+	_ = os.Setenv("MATRIX_HOMESERVER_URL", "https://matrix.test.com")
+	_ = os.Setenv("MATRIX_ACCESS_TOKEN", "test-access-token")
+	_ = os.Setenv("MATRIX_DEFAULT_ROOM_ID", "!test:test.com")
 
 	defer func() {
-		os.Unsetenv("VIBER_API_TOKEN")
-		os.Unsetenv("VIBER_WEBHOOK_URL")
-		os.Unsetenv("LISTEN_ADDRESS")
-		os.Unsetenv("MATRIX_HOMESERVER_URL")
-		os.Unsetenv("MATRIX_ACCESS_TOKEN")
-		os.Unsetenv("MATRIX_DEFAULT_ROOM_ID")
+		_ = os.Unsetenv("VIBER_API_TOKEN")
+		_ = os.Unsetenv("VIBER_WEBHOOK_URL")
+		_ = os.Unsetenv("LISTEN_ADDRESS")
+		_ = os.Unsetenv("MATRIX_HOMESERVER_URL")
+		_ = os.Unsetenv("MATRIX_ACCESS_TOKEN")
+		_ = os.Unsetenv("MATRIX_DEFAULT_ROOM_ID")
 	}()
 
 	cfg := FromEnv()
@@ -41,7 +41,7 @@ func TestFromEnv(t *testing.T) {
 
 func TestFromEnvDefaults(t *testing.T) {
 	// Clear environment
-	os.Unsetenv("LISTEN_ADDRESS")
+	_ = os.Unsetenv("LISTEN_ADDRESS")
 
 	cfg := FromEnv()
 
