@@ -25,7 +25,7 @@ func BenchmarkDatabaseUpsert(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		viberID := "bench_user_" + string(rune(i))
-		_ = db.UpsertViberUser(viberID, "Benchmark User")
+		_ = db.UpsertViberUser(context.Background(), viberID, "Benchmark User")
 	}
 }
 
@@ -41,11 +41,11 @@ func BenchmarkDatabaseQuery(b *testing.B) {
 	defer db.Close()
 	
 	// Pre-populate
-	db.UpsertViberUser("bench_user", "Bench User")
+	db.UpsertViberUser(context.Background(), "bench_user", "Bench User")
 	
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, _ = db.GetViberUser("bench_user")
+		_, _ = db.GetViberUser(context.Background(), "bench_user")
 	}
 }
 

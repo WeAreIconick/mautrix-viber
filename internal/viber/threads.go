@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 
-	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 	
 	"github.com/example/mautrix-viber/internal/database"

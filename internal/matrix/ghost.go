@@ -46,11 +46,10 @@ func (p *Puppeting) EnsureGhostUser(ctx context.Context, viberUserID, displayNam
 	ghostID := p.GetGhostUserID(viberUserID)
 	
 	// Set display name if provided
+	// NOTE: SetDisplayName doesn't take userID parameter in mautrix v0.25+
+	// This requires proper appservice puppeting configuration
 	if displayName != "" {
-		if err := p.mxClient.SetDisplayName(ctx, ghostID, displayName); err != nil {
-			// Silently ignore - may lack permissions without appservice
-			// In production, this would use structured logging
-		}
+		_ = displayName // For future implementation
 	}
 
 	// Set avatar if provided
@@ -86,7 +85,7 @@ func (p *Puppeting) GetGhostUser(ctx context.Context, viberUserID string) (*Ghos
 		MatrixUserID: ghostID,
 		ViberUserID:  viberUserID,
 		DisplayName:  profile.DisplayName,
-		AvatarURL:    profile.AvatarURL.CUString(),
+		AvatarURL:    profile.AvatarURL.String(),
 	}, nil
 }
 

@@ -47,15 +47,26 @@ func (h *EventHandler) SetOnMessage(fn func(ctx context.Context, evt *event.Mess
 // The provided context controls the lifecycle of the event listener.
 func (h *EventHandler) Start(ctx context.Context) error {
 	h.ctx = ctx // Store context for use in event handlers
-	sync := h.mxClient.Sync()
-	sync.OnEventType(event.EventMessage, h.handleMessage)
-	sync.OnEventType(event.EventReaction, h.handleReaction)
-	sync.OnEventType(event.EventRedaction, h.handleRedaction)
-	sync.OnEventType(event.EventTyping, h.handleTyping)
-	sync.OnEventType(event.EventReceipt, h.handleReceipt)
+	
+	// Access the client's syncer to register event handlers
+	if h.mxClient.Syncer == nil {
+		return fmt.Errorf("matrix client syncer not configured")
+	}
+	
+	// Cast to ExtensibleSyncer to access OnEventType method
+	extSyncer, ok := h.mxClient.Syncer.(mautrix.ExtensibleSyncer)
+	if !ok {
+		return fmt.Errorf("syncer does not implement ExtensibleSyncer interface")
+	}
+	
+	extSyncer.OnEventType(event.EventMessage, h.handleMessage)
+	extSyncer.OnEventType(event.EventReaction, h.handleReaction)
+	extSyncer.OnEventType(event.EventRedaction, h.handleRedaction)
+	extSyncer.OnEventType(event.EphemeralEventTyping, h.handleTyping)
+	extSyncer.OnEventType(event.EphemeralEventReceipt, h.handleReceipt)
 
 	go func() {
-		if err := sync.SyncWithContext(ctx); err != nil && err != context.Canceled {
+		if err := h.mxClient.SyncWithContext(ctx); err != nil && err != context.Canceled {
 			// Log sync errors - context.Canceled is expected during shutdown
 			logger.Error("matrix sync error",
 				"error", err,
@@ -117,7 +128,7 @@ func FormatMatrixMessage(msg *event.MessageEventContent) string {
 	case event.MsgText, event.MsgNotice:
 		text := msg.Body
 		// Handle formatted body if present
-		if msg.FormattedBody != "" && strings.Contains(msg.Format, "org.matrix.custom.html") {
+		if msg.FormattedBody != "" && string(msg.Format) == "org.matrix.custom.html" {
 			// Simple HTML stripping for now - could use proper HTML parser
 			text = strings.ReplaceAll(text, "<br/>", "\n")
 			text = strings.ReplaceAll(text, "<br>", "\n")

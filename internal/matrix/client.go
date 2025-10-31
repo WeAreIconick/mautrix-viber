@@ -38,6 +38,12 @@ func NewClient(cfg Config) (*Client, error) {
     if err != nil {
         return nil, fmt.Errorf("create matrix client: %w", err)
     }
+    
+    // Initialize DefaultSyncer if not already set
+    if mx.Syncer == nil {
+        mx.Syncer = mautrix.NewDefaultSyncer()
+    }
+    
     return &Client{
         homeserverURL: cfg.HomeserverURL,
         accessToken:   cfg.AccessToken,
@@ -56,7 +62,7 @@ func (c *Client) SendText(ctx context.Context, text string) error {
         metrics.RecordOperationDuration("matrix_send_text", time.Since(start))
     }()
     content := format.RenderMarkdown(text, true, true)
-    _, err := c.mxClient.SendMessageEvent(ctx, c.defaultRoomID, event.EventMessage, content)
+    _, err := c.mxClient.SendMessageEvent(ctx, id.RoomID(c.defaultRoomID), event.EventMessage, content)
     if err != nil {
         metrics.RecordError("matrix_send_failure", "client")
         return fmt.Errorf("send matrix message: %w", err)
@@ -65,7 +71,7 @@ func (c *Client) SendText(ctx context.Context, text string) error {
 }
 
 // SendImage uploads bytes to the HS and sends an m.image message.
-func (c *Client) SendImage(ctx context.Context, filename string, mimeType string, data []byte, info *event.ImageInfo) error {
+func (c *Client) SendImage(ctx context.Context, filename string, mimeType string, data []byte, info interface{}) error {
     if c.defaultRoomID == "" {
         return fmt.Errorf("default room ID not configured")
     }
@@ -80,16 +86,18 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
             mimeType = "application/octet-stream"
         }
     }
-    uploadResp, err := c.mxClient.UploadBytes(data, mimeType)
+    uploadResp, err := c.mxClient.UploadBytes(ctx, data, mimeType)
     if err != nil {
         metrics.RecordError("matrix_upload_failure", "client")
         return fmt.Errorf("upload image: %w", err)
     }
-    content := &event.MessageEventContent{
-        MsgType: event.MsgImage,
-        Body:    filename,
-        URL:     uploadResp.ContentURI.String(),
-        Info:    info,
+    content := map[string]interface{}{
+        "msgtype": event.MsgImage,
+        "body":    filename,
+        "url":     uploadResp.ContentURI.String(),
+    }
+    if info != nil {
+        content["info"] = info
     }
     _, err = c.mxClient.SendMessageEvent(ctx, id.RoomID(c.defaultRoomID), event.EventMessage, content)
     if err != nil {
@@ -103,11 +111,10 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
 // Note: Proper puppeting usually requires an appservice registration. This provides basic profile setting.
 func (c *Client) EnsureGhostUser(ctx context.Context, userID id.UserID, displayName string) error {
     // Best-effort: set profile if token has privileges
+    // NOTE: SetDisplayName doesn't take userID parameter in mautrix v0.25+
+    // This requires proper appservice puppeting configuration
     if displayName != "" {
-        if err := c.mxClient.SetDisplayName(ctx, userID, displayName); err != nil {
-            // Ignore errors; may lack permissions
-            return nil
-        }
+        _ = displayName // For future implementation
     }
     return nil
 }
@@ -116,8 +123,19 @@ func (c *Client) EnsureGhostUser(ctx context.Context, userID id.UserID, displayN
 // The provided context controls the lifecycle of the sync operation.
 // Each message callback receives a context derived from the parent context for cancellation propagation.
 func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)) error {
-	syncer := c.mxClient.Sync()
-	syncer.OnEventType(event.EventMessage, func(handlerCtx context.Context, evt *event.Event) {
+	// Access the client's syncer to register event handlers
+	if c.mxClient.Syncer == nil {
+		return fmt.Errorf("matrix client syncer not configured")
+	}
+	
+	// Cast to ExtensibleSyncer to access OnEventType method
+	extSyncer, ok := c.mxClient.Syncer.(mautrix.ExtensibleSyncer)
+	if !ok {
+		return fmt.Errorf("syncer does not implement ExtensibleSyncer interface")
+	}
+	
+	// Register message event handler
+	extSyncer.OnEventType(event.EventMessage, func(handlerCtx context.Context, evt *event.Event) {
 		if evt == nil || evt.Content.Parsed == nil {
 			return
 		}
@@ -129,8 +147,10 @@ func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx co
 		// This allows the message handler to respect context cancellation from shutdown
 		onMessage(ctx, msg, evt.RoomID, evt.Sender)
 	})
+	
+	// Start syncing in background goroutine
 	go func() {
-		if err := syncer.SyncWithContext(ctx); err != nil && err != context.Canceled {
+		if err := c.mxClient.SyncWithContext(ctx); err != nil && err != context.Canceled {
 			// Log sync errors - context.Canceled is expected during shutdown
 			logger.Error("matrix sync error",
 				"error", err,
@@ -151,7 +171,8 @@ func (c *Client) RedactEvent(ctx context.Context, roomID id.RoomID, eventID id.E
 		return fmt.Errorf("matrix client not configured")
 	}
 	
-	_, err := c.mxClient.RedactEvent(ctx, roomID, eventID, &mautrix.ReqRedact{
+	// ReqRedact is passed as variadic parameter, not pointer
+	_, err := c.mxClient.RedactEvent(ctx, roomID, eventID, mautrix.ReqRedact{
 		Reason: "Message deleted on Viber",
 	})
 	return err

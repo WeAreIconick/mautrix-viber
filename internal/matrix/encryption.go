@@ -39,7 +39,7 @@ func (em *EncryptionManager) EnableEncryption(ctx context.Context, roomID id.Roo
 		"algorithm": "m.megolm.v1.aes-sha2",
 	}
 	
-	_, err := em.mxClient.SendStateEvent(ctx, roomID, "m.room.encryption", "", content)
+	_, err := em.mxClient.SendStateEvent(ctx, roomID, event.StateEncryption, "", content)
 	return err
 }
 
@@ -49,8 +49,8 @@ func (em *EncryptionManager) IsEncrypted(ctx context.Context, roomID id.RoomID) 
 		return false, fmt.Errorf("matrix client not configured")
 	}
 	
-	// Query room encryption state
-	state, err := em.mxClient.GetStateEvent(ctx, roomID, "m.room.encryption", "")
+	// Query room encryption state using FullStateEvent
+	state, err := em.mxClient.FullStateEvent(ctx, roomID, event.StateEncryption, "")
 	if err != nil {
 		return false, err
 	}

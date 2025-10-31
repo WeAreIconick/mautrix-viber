@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	mautrix "maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 )
 
@@ -59,13 +60,19 @@ func (p *Portals) GetOrCreatePortalRoom(ctx context.Context, viberChatID, name s
 // UpdateRoomMetadata updates room name, topic, or avatar.
 func (p *Portals) UpdateRoomMetadata(ctx context.Context, roomID id.RoomID, name, topic, avatarURL string) error {
 	if name != "" {
-		if err := p.mxClient.SetRoomName(ctx, roomID, name); err != nil {
+		_, err := p.mxClient.SendStateEvent(ctx, roomID, event.StateRoomName, "", map[string]interface{}{
+			"name": name,
+		})
+		if err != nil {
 			return fmt.Errorf("set room name: %w", err)
 		}
 	}
 
 	if topic != "" {
-		if err := p.mxClient.SetRoomTopic(ctx, roomID, topic); err != nil {
+		_, err := p.mxClient.SendStateEvent(ctx, roomID, event.StateTopic, "", map[string]interface{}{
+			"topic": topic,
+		})
+		if err != nil {
 			return fmt.Errorf("set room topic: %w", err)
 		}
 	}
@@ -73,7 +80,10 @@ func (p *Portals) UpdateRoomMetadata(ctx context.Context, roomID id.RoomID, name
 	if avatarURL != "" {
 		// Parse avatar URL as ContentURI
 		avatarURI := id.MustParseContentURI(avatarURL)
-		if err := p.mxClient.SetRoomAvatar(ctx, roomID, avatarURI); err != nil {
+		_, err := p.mxClient.SendStateEvent(ctx, roomID, event.StateRoomAvatar, "", map[string]interface{}{
+			"url": avatarURI.String(),
+		})
+		if err != nil {
 			return fmt.Errorf("set room avatar: %w", err)
 		}
 	}
@@ -83,9 +93,10 @@ func (p *Portals) UpdateRoomMetadata(ctx context.Context, roomID id.RoomID, name
 
 // InviteGhostUser invites a ghost user to a portal room.
 func (p *Portals) InviteGhostUser(ctx context.Context, roomID id.RoomID, ghostUserID id.UserID) error {
-	if err := p.mxClient.InviteUser(ctx, roomID, &mautrix.ReqInviteUser{
+	_, err := p.mxClient.InviteUser(ctx, roomID, &mautrix.ReqInviteUser{
 		UserID: ghostUserID,
-	}); err != nil {
+	})
+	if err != nil {
 		return fmt.Errorf("invite ghost user: %w", err)
 	}
 	return nil

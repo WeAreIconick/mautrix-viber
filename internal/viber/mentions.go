@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	mautrix "maunium.net/go/mautrix"
-	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 	
 	"github.com/example/mautrix-viber/internal/database"

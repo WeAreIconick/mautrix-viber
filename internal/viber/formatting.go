@@ -17,7 +17,7 @@ func FormatMessage(msg *event.MessageEventContent) string {
 	case event.MsgText, event.MsgNotice:
 		text := msg.Body
 		// Handle formatted body if present
-		if msg.FormattedBody != "" && strings.Contains(msg.Format, "org.matrix.custom.html") {
+		if msg.FormattedBody != "" && string(msg.Format) == "org.matrix.custom.html" {
 			text = stripHTML(msg.FormattedBody)
 		}
 		return text
@@ -67,13 +67,10 @@ func stripHTML(html string) string {
 
 // HandleReply extracts reply information from a Matrix message.
 func HandleReply(msg *event.MessageEventContent) (replyToEventID string, replyText string) {
-	if msg.RelatesTo == nil {
+	if msg.RelatesTo == nil || msg.RelatesTo.InReplyTo == nil {
 		return "", ""
 	}
-	if msg.RelatesTo.Type == event.RelInReplyTo {
-		return msg.RelatesTo.EventID.String(), msg.Body
-	}
-	return "", ""
+	return msg.RelatesTo.InReplyTo.EventID.String(), msg.Body
 }
 
 // FormatReply formats a message with reply context for Viber.
@@ -86,13 +83,15 @@ func HandleReaction(evt *event.Event) (reactedToEventID string, reactionKey stri
 	if evt.Type != event.EventReaction {
 		return "", ""
 	}
-	if evt.Content.RelatesTo == nil {
+	reactEvt, ok := evt.Content.Parsed.(*event.ReactionEventContent)
+	if !ok || reactEvt == nil {
 		return "", ""
 	}
-	if evt.Content.RelatesTo.Type == event.RelAnnotation {
-		return evt.Content.RelatesTo.EventID.String(), evt.Content.RelatesTo.Key
+	// RelatesTo is a value type in ReactionEventContent, check if event ID is set
+	if reactEvt.RelatesTo.EventID == "" {
+		return "", ""
 	}
-	return "", ""
+	return reactEvt.RelatesTo.EventID.String(), reactEvt.RelatesTo.Key
 }
 
 // FormatReaction formats a reaction for Viber (text representation).
