@@ -2,6 +2,7 @@ package utils_test
 
 import (
 	"fmt"
+
 	"github.com/example/mautrix-viber/internal/utils"
 )
 
