@@ -19,7 +19,7 @@ func (c *Client) HandleVoiceMessage(ctx context.Context, mediaURL string, durati
 	if err != nil {
 		return fmt.Errorf("download voice: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)
@@ -52,7 +52,7 @@ func (c *Client) HandleVideoMessage(ctx context.Context, mediaURL, thumbnailURL 
 	if err != nil {
 		return fmt.Errorf("download video: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)

@@ -37,7 +37,7 @@ func (c *Client) forwardVideo(ctx context.Context, mediaURL, filename string) er
 	if err != nil {
 		return fmt.Errorf("download video: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)
@@ -64,7 +64,7 @@ func (c *Client) forwardFile(ctx context.Context, mediaURL, filename string) err
 	if err != nil {
 		return fmt.Errorf("download file: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)
@@ -111,7 +111,7 @@ func (c *Client) forwardImage(ctx context.Context, mediaURL, filename string) er
 	if err != nil {
 		return fmt.Errorf("download image: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)

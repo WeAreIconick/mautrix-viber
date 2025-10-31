@@ -37,7 +37,7 @@ func (c *Client) UploadFile(ctx context.Context, fileURL, filename, mimeType str
 		}
 		return fmt.Errorf("download file: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		if progressChan != nil {

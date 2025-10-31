@@ -21,6 +21,9 @@ linters-settings:
       - name: package-comments
         severity: warning
 
+output:
+  format: colored-line-number
+
 issues:
   exclude-use-default: false
   max-issues-per-linter: 0

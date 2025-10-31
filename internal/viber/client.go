@@ -187,8 +187,8 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				resp, err := c.httpClient.Do(req)
 				if err == nil && resp.StatusCode == http.StatusOK {
+					defer func() { _ = resp.Body.Close() }()
 					data, err := io.ReadAll(resp.Body)
-					resp.Body.Close()
 					if err != nil {
 						// Log error but don't fail webhook - best-effort image forwarding
 						logger.WarnWithContext(r.Context(), "failed to read image data from media URL",
