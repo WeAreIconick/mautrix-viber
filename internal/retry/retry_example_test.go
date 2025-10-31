@@ -74,4 +74,3 @@ func ExampleDo_withTimeout() {
 	// Output:
 	// Retry stopped due to context timeout
 }
-

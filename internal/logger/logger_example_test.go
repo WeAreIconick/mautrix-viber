@@ -31,4 +31,3 @@ func ExampleSetLevel() {
 	// Now all debug messages will be logged
 	logger.Debug("This debug message will be logged")
 }
-

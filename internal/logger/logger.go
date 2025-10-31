@@ -16,7 +16,7 @@ var (
 func init() {
 	// Initialize with JSON handler for structured logging
 	opts := &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level:     slog.LevelInfo,
 		AddSource: false,
 	}
 	Default = slog.New(slog.NewJSONHandler(os.Stdout, opts))
@@ -38,7 +38,7 @@ func SetLevel(level string) {
 		lvl = slog.LevelInfo
 	}
 	Default = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: lvl,
+		Level:     lvl,
 		AddSource: true,
 	}))
 }
@@ -81,4 +81,3 @@ func WithFields(fields ...slog.Attr) *slog.Logger {
 	}
 	return Default.With(attrs...)
 }
-

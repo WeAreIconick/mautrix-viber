@@ -63,7 +63,7 @@ func (dm *DeliveryManager) TrackRead(ctx context.Context, viberMsgID, userID str
 	_ = ctx
 	_ = viberMsgID
 	_ = userID
-	
+
 	if dm.matrixClient != nil {
 		matrixEventID, err := dm.db.GetMatrixEventID(ctx, viberMsgID)
 		if err == nil && matrixEventID != "" {
@@ -71,7 +71,7 @@ func (dm *DeliveryManager) TrackRead(ctx context.Context, viberMsgID, userID str
 			_ = matrixEventID
 		}
 	}
-	
+
 	return fmt.Errorf("read receipt tracking requires database schema extension and Matrix client SendReadReceipt method")
 }
 

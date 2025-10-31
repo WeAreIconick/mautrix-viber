@@ -12,7 +12,7 @@ import (
 // TestEndToEndMessageFlow tests the complete message flow from Viber to Matrix.
 func TestEndToEndMessageFlow(t *testing.T) {
 	t.Skip("Requires full test environment with mock Matrix client")
-	
+
 	// This would test:
 	// 1. Viber webhook receives message
 	// 2. Signature verification passes
@@ -25,7 +25,7 @@ func TestEndToEndMessageFlow(t *testing.T) {
 // TestMatrixToViberFlow tests message flow from Matrix to Viber.
 func TestMatrixToViberFlow(t *testing.T) {
 	t.Skip("Requires mock Matrix client and Viber API")
-	
+
 	// This would test:
 	// 1. Matrix event received
 	// 2. Message formatted for Viber
@@ -40,7 +40,7 @@ func TestDatabaseConsistency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Test transaction-like consistency
 	viberID := "test_user_e2e"
@@ -85,7 +85,7 @@ func TestConcurrentOperations(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		go func(id int) {
 			viberID := "test_user_" + string(rune(id))
-			db.UpsertViberUser(ctx, viberID, "Test User")
+			_ = db.UpsertViberUser(ctx, viberID, "Test User")
 			done <- true
 		}(i)
 	}
@@ -108,7 +108,7 @@ func TestConcurrentOperations(t *testing.T) {
 // TestGracefulShutdown tests graceful shutdown handling.
 func TestGracefulShutdown(t *testing.T) {
 	t.Skip("Requires actual server instance")
-	
+
 	// This would test:
 	// 1. Server starts successfully
 	// 2. SIGTERM received
@@ -180,4 +180,3 @@ func TestContextCancellation(t *testing.T) {
 		t.Error("Expected error from cancelled context")
 	}
 }
-

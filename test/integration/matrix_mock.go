@@ -23,7 +23,7 @@ func (m *MockMatrixClient) SendText(ctx context.Context, text string) error {
 	if m.ErrorRate > 0 && rand() < m.ErrorRate {
 		return fmt.Errorf("mock error")
 	}
-	
+
 	m.SentMessages = append(m.SentMessages, SentMessage{
 		Content: text,
 	})
@@ -43,4 +43,3 @@ func (m *MockMatrixClient) Reset() {
 func rand() float64 {
 	return 0.5 // Simplified - use proper random in real implementation
 }
-

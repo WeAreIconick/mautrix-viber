@@ -14,7 +14,7 @@ type Migration struct {
 
 // Migrator manages database migrations.
 type Migrator struct {
-	db        *DB
+	db         *DB
 	migrations []Migration
 }
 
@@ -49,7 +49,7 @@ func (m *Migrator) Migrate(targetVersion int) error {
 	if err != nil {
 		return fmt.Errorf("get current version: %w", err)
 	}
-	
+
 	// Create migrations table if it doesn't exist
 	_, err = m.db.db.Exec(`
 		CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -60,7 +60,7 @@ func (m *Migrator) Migrate(targetVersion int) error {
 	if err != nil {
 		return fmt.Errorf("create migrations table: %w", err)
 	}
-	
+
 	// Apply migrations
 	for _, migration := range m.migrations {
 		if migration.Version > currentVersion && migration.Version <= targetVersion {
@@ -69,7 +69,7 @@ func (m *Migrator) Migrate(targetVersion int) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -79,7 +79,7 @@ func (m *Migrator) applyMigration(migration Migration) error {
 	if _, err := m.db.db.Exec(migration.Up); err != nil {
 		return fmt.Errorf("execute migration: %w", err)
 	}
-	
+
 	// Record migration
 	_, err := m.db.db.Exec("INSERT INTO schema_migrations (version) VALUES (?)", migration.Version)
 	return err
@@ -91,7 +91,7 @@ func (m *Migrator) Rollback(targetVersion int) error {
 	if err != nil {
 		return fmt.Errorf("get current version: %w", err)
 	}
-	
+
 	// Rollback migrations in reverse order
 	for i := len(m.migrations) - 1; i >= 0; i-- {
 		migration := m.migrations[i]
@@ -101,7 +101,7 @@ func (m *Migrator) Rollback(targetVersion int) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -110,14 +110,13 @@ func (m *Migrator) rollbackMigration(migration Migration) error {
 	if migration.Down == "" {
 		return fmt.Errorf("migration %d has no down migration", migration.Version)
 	}
-	
+
 	// Run rollback SQL
 	if _, err := m.db.db.Exec(migration.Down); err != nil {
 		return fmt.Errorf("execute rollback: %w", err)
 	}
-	
+
 	// Remove migration record
 	_, err := m.db.db.Exec("DELETE FROM schema_migrations WHERE version = ?", migration.Version)
 	return err
 }
-

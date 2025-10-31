@@ -16,14 +16,14 @@ import (
 func main() {
 	// Load configuration
 	cfg := config.FromEnv()
-	
+
 	// Open database
 	db, err := database.Open(cfg.DatabasePath)
 	if err != nil {
 		log.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
-	
+	defer func() { _ = db.Close() }()
+
 	// Initialize Matrix client
 	mxClient, err := matrix.NewClient(matrix.Config{
 		HomeserverURL: cfg.MatrixHomeserverURL,
@@ -33,24 +33,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize Matrix client: %v", err)
 	}
-	
+
 	// Initialize Viber client
 	viberClient := viber.NewClient(viber.Config{
 		APIToken:   cfg.APIToken,
 		WebhookURL: cfg.WebhookURL,
 	}, mxClient, db)
-	
+
 	// Ensure webhook is registered
 	if err := viberClient.EnsureWebhook(context.Background()); err != nil {
 		log.Fatalf("Failed to register webhook: %v", err)
 	}
-	
+
 	fmt.Println("Bridge initialized successfully!")
 	fmt.Println("Waiting for messages...")
-	
+
 	// Keep running
 	ctx := context.Background()
 	<-ctx.Done()
 	time.Sleep(time.Second)
 }
-

@@ -15,11 +15,11 @@ import (
 
 // EventHandler handles incoming Matrix events for bridging.
 type EventHandler struct {
-	mxClient     *mautrix.Client
-	viberClient  interface{} // *viber.Client stored as interface{} to avoid circular import
+	mxClient      *mautrix.Client
+	viberClient   interface{} // *viber.Client stored as interface{} to avoid circular import
 	defaultRoomID string
-	onMessage    func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)
-	ctx          context.Context // Context for event handling (set by Start)
+	onMessage     func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)
+	ctx           context.Context // Context for event handling (set by Start)
 }
 
 // NewEventHandler creates a new Matrix event handler.
@@ -47,18 +47,18 @@ func (h *EventHandler) SetOnMessage(fn func(ctx context.Context, evt *event.Mess
 // The provided context controls the lifecycle of the event listener.
 func (h *EventHandler) Start(ctx context.Context) error {
 	h.ctx = ctx // Store context for use in event handlers
-	
+
 	// Access the client's syncer to register event handlers
 	if h.mxClient.Syncer == nil {
 		return fmt.Errorf("matrix client syncer not configured")
 	}
-	
+
 	// Cast to ExtensibleSyncer to access OnEventType method
 	extSyncer, ok := h.mxClient.Syncer.(mautrix.ExtensibleSyncer)
 	if !ok {
 		return fmt.Errorf("syncer does not implement ExtensibleSyncer interface")
 	}
-	
+
 	extSyncer.OnEventType(event.EventMessage, h.handleMessage)
 	extSyncer.OnEventType(event.EventReaction, h.handleReaction)
 	extSyncer.OnEventType(event.EventRedaction, h.handleRedaction)
@@ -154,4 +154,3 @@ func FormatMatrixMessage(msg *event.MessageEventContent) string {
 		return fmt.Sprintf("[%s]", msg.MsgType)
 	}
 }
-

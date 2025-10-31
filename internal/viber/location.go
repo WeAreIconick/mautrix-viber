@@ -11,21 +11,21 @@ func (c *Client) HandleLocation(ctx context.Context, lat, lon float64, label str
 	if c.matrix == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Format location message
 	locationText := fmt.Sprintf("📍 Location: %s\nLatitude: %.6f\nLongitude: %.6f", label, lat, lon)
 	if label == "" {
 		locationText = fmt.Sprintf("📍 Location\nLatitude: %.6f\nLongitude: %.6f", lat, lon)
 	}
-	
+
 	// Generate map preview URL (OpenStreetMap)
 	// Note: This could be made configurable via config if needed for different map providers
 	const osmBaseURL = "https://www.openstreetmap.org"
 	mapURL := fmt.Sprintf("%s/?mlat=%.6f&mlon=%.6f&zoom=15", osmBaseURL, lat, lon)
-	
+
 	// Send as text with map URL
 	text := fmt.Sprintf("%s\n\nMap: %s", locationText, mapURL)
-	
+
 	return c.matrix.SendText(ctx, text)
 }
 
@@ -34,7 +34,7 @@ func (c *Client) ForwardLocation(ctx context.Context, locationURL string) error 
 	if c.matrix == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Location forwarding from Viber URL format
 	// Viber location messages contain lat/lon in the message payload
 	// This method receives the location URL for display
@@ -46,4 +46,3 @@ func (c *Client) ForwardLocation(ctx context.Context, locationURL string) error 
 func (c *Client) SendLocationToViber(ctx context.Context, receiver string, lat, lon float64) (*SendMessageResponse, error) {
 	return c.SendLocation(ctx, receiver, lat, lon)
 }
-

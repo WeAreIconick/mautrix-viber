@@ -14,14 +14,14 @@ import (
 // BenchmarkDatabaseUpsert benchmarks user upsertion.
 func BenchmarkDatabaseUpsert(b *testing.B) {
 	dbPath := "/tmp/benchmark_upsert.db"
-	defer os.Remove(dbPath)
-	
+	defer func() { _ = os.Remove(dbPath) }()
+
 	db, err := database.Open(dbPath)
 	if err != nil {
 		b.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
-	
+	defer func() { _ = db.Close() }()
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		viberID := "bench_user_" + string(rune(i))
@@ -33,16 +33,16 @@ func BenchmarkDatabaseUpsert(b *testing.B) {
 func BenchmarkDatabaseQuery(b *testing.B) {
 	dbPath := "/tmp/benchmark_query.db"
 	defer os.Remove(dbPath)
-	
+
 	db, err := database.Open(dbPath)
 	if err != nil {
 		b.Fatalf("Failed to open database: %v", err)
 	}
 	defer db.Close()
-	
+
 	// Pre-populate
 	db.UpsertViberUser(context.Background(), "bench_user", "Bench User")
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = db.GetViberUser(context.Background(), "bench_user")
@@ -54,7 +54,7 @@ func BenchmarkRetryLogic(b *testing.B) {
 	cfg := retry.DefaultConfig()
 	cfg.MaxAttempts = 3
 	cfg.InitialDelay = 1 * time.Microsecond
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = retry.Do(context.Background(), cfg, func() error {
@@ -67,7 +67,7 @@ func BenchmarkRetryLogic(b *testing.B) {
 func BenchmarkSignatureCalculation(b *testing.B) {
 	token := "test-api-token"
 	body := `{"event":"message","sender":{"id":"123"},"message":{"type":"text","text":"Hello world"}}`
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		// Signature calculation benchmark
@@ -79,4 +79,3 @@ func calculateSignature(body, token string) string {
 	// Simplified for benchmark - actual implementation uses HMAC
 	return "signature"
 }
-

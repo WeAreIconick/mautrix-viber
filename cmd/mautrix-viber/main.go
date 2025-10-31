@@ -30,83 +30,83 @@ func main() {
 	)
 
 	env := config.FromEnv()
-	
+
 	// Validate configuration before proceeding
 	if err := env.Validate(); err != nil {
 		log.Fatalf("configuration validation failed: %v", err)
 	}
 
-    // Init Matrix client (optional: only if fully configured)
-    var mxClient *imatrix.Client
-    if env.MatrixHomeserverURL != "" && env.MatrixAccessToken != "" && env.MatrixDefaultRoomID != "" {
-        mc, err := imatrix.NewClient(imatrix.Config{
-            HomeserverURL: env.MatrixHomeserverURL,
-            AccessToken:   env.MatrixAccessToken,
-            DefaultRoomID: env.MatrixDefaultRoomID,
-        })
-        if err != nil {
-            log.Fatalf("failed to initialize matrix client: %v", err)
-        }
-        mxClient = mc
-    } else {
-        logger.Info("matrix config incomplete; message relay will be disabled")
-    }
+	// Init Matrix client (optional: only if fully configured)
+	var mxClient *imatrix.Client
+	if env.MatrixHomeserverURL != "" && env.MatrixAccessToken != "" && env.MatrixDefaultRoomID != "" {
+		mc, err := imatrix.NewClient(imatrix.Config{
+			HomeserverURL: env.MatrixHomeserverURL,
+			AccessToken:   env.MatrixAccessToken,
+			DefaultRoomID: env.MatrixDefaultRoomID,
+		})
+		if err != nil {
+			log.Fatalf("failed to initialize matrix client: %v", err)
+		}
+		mxClient = mc
+	} else {
+		logger.Info("matrix config incomplete; message relay will be disabled")
+	}
 
-    // Initialize cache if configured
-    var cacheClient *cache.Cache
-    if env.RedisURL != "" {
-        c, err := cache.NewCache(env.RedisURL, env.CacheTTL)
-        if err != nil {
-            log.Fatalf("failed to initialize cache: %v", err)
-        }
-        cacheClient = c
-        defer cacheClient.Close()
-        logger.Info("redis cache initialized", "ttl", env.CacheTTL)
-    }
+	// Initialize cache if configured
+	var cacheClient *cache.Cache
+	if env.RedisURL != "" {
+		c, err := cache.NewCache(env.RedisURL, env.CacheTTL)
+		if err != nil {
+			log.Fatalf("failed to initialize cache: %v", err)
+		}
+		cacheClient = c
+		defer func() { _ = cacheClient.Close() }()
+		logger.Info("redis cache initialized", "ttl", env.CacheTTL)
+	}
 
-    // Open database with optional cache
-    db, err := database.OpenWithCache(env.DatabasePath, cacheClient)
-    if err != nil {
-        log.Fatalf("failed to open database: %v", err)
-    }
-    defer db.Close()
+	// Open database with optional cache
+	db, err := database.OpenWithCache(env.DatabasePath, cacheClient)
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer func() { _ = db.Close() }()
 
-    cfg := viber.Config{
-        APIToken:       env.APIToken,
-        WebhookURL:     env.WebhookURL,
-        ViberAPIBaseURL: env.ViberAPIBaseURL,
-        ListenAddress:  env.ListenAddress,
-        HTTPTimeout:    env.HTTPClientTimeout,
-    }
+	cfg := viber.Config{
+		APIToken:        env.APIToken,
+		WebhookURL:      env.WebhookURL,
+		ViberAPIBaseURL: env.ViberAPIBaseURL,
+		ListenAddress:   env.ListenAddress,
+		HTTPTimeout:     env.HTTPClientTimeout,
+	}
 
-    v := viber.NewClient(cfg, mxClient, db)
+	v := viber.NewClient(cfg, mxClient, db)
 	if err := v.EnsureWebhook(context.Background()); err != nil {
 		log.Fatalf("failed to ensure webhook: %v", err)
 	}
 
-    // If Matrix is configured, start listener to forward Matrix -> Viber
-    if mxClient != nil && env.ViberDefaultReceiverID != "" {
-        if err := mxClient.StartMessageListener(context.Background(), func(ctx context.Context, msg *event.MessageEventContent, roomID id.RoomID, sender id.UserID) {
-            // Forward plain text messages to a default Viber receiver for demo purposes
-            if msg.MsgType == event.MsgText || msg.MsgType == event.MsgNotice {
-                // best-effort: include sender localpart
-                text := msg.Body
-                if text != "" {
-                    _, err := v.SendText(ctx, env.ViberDefaultReceiverID, text)
-                    if err != nil {
-                        logger.Warn("failed to forward message to Viber",
-                            "error", err,
-                            "receiver", env.ViberDefaultReceiverID,
-                        )
-                    }
-                }
-            }
-        }); err != nil {
-            logger.Error("matrix listener error",
-                "error", err,
-            )
-        }
-    }
+	// If Matrix is configured, start listener to forward Matrix -> Viber
+	if mxClient != nil && env.ViberDefaultReceiverID != "" {
+		if err := mxClient.StartMessageListener(context.Background(), func(ctx context.Context, msg *event.MessageEventContent, roomID id.RoomID, sender id.UserID) {
+			// Forward plain text messages to a default Viber receiver for demo purposes
+			if msg.MsgType == event.MsgText || msg.MsgType == event.MsgNotice {
+				// best-effort: include sender localpart
+				text := msg.Body
+				if text != "" {
+					_, err := v.SendText(ctx, env.ViberDefaultReceiverID, text)
+					if err != nil {
+						logger.Warn("failed to forward message to Viber",
+							"error", err,
+							"receiver", env.ViberDefaultReceiverID,
+						)
+					}
+				}
+			}
+		}); err != nil {
+			logger.Error("matrix listener error",
+				"error", err,
+			)
+		}
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/healthz", healthHandler(db, v))
@@ -114,7 +114,7 @@ func main() {
 	mux.Handle("/metrics", promhttp.Handler())
 	mux.HandleFunc("/api/info", api.InfoHandler)
 	mux.HandleFunc("/viber/webhook", v.WebhookHandler)
-	
+
 	// pprof endpoints are automatically registered via blank import above
 	// Access at /debug/pprof/ when ENABLE_PPROF=true
 	// In production, disable via environment variable or protect with auth
@@ -146,60 +146,59 @@ func main() {
 		MaxHeaderBytes:    1 << 20, // 1MB max header size
 	}
 
-    go func() {
-        logger.Info("http server listening",
-            "address", cfg.ListenAddress,
-        )
-        if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-            logger.Error("server error",
-                "error", err,
-            )
-            log.Fatalf("server error: %v", err)
-        }
-    }()
+	go func() {
+		logger.Info("http server listening",
+			"address", cfg.ListenAddress,
+		)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("server error",
+				"error", err,
+			)
+			log.Fatalf("server error: %v", err)
+		}
+	}()
 
-    // Graceful shutdown
-    stop := make(chan os.Signal, 1)
-    signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-    <-stop
-    shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-    defer cancel()
-    if err := srv.Shutdown(shutdownCtx); err != nil {
-        logger.Error("graceful shutdown failed",
-            "error", err,
-        )
-    }
-    logger.Info("shutdown complete")
+	// Graceful shutdown
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Error("graceful shutdown failed",
+			"error", err,
+		)
+	}
+	logger.Info("shutdown complete")
 }
 
 // withServerMiddleware adds basic defenses like body size limits.
 func withServerMiddleware(next http.Handler) http.Handler {
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Limit body size to 2MB by default (sufficient for webhook JSON)
-        r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
-        next.ServeHTTP(w, r)
-    })
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Limit body size to 2MB by default (sufficient for webhook JSON)
+		r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+		next.ServeHTTP(w, r)
+	})
 }
 
 // withRateLimit applies a simple token-bucket rate limiter per client IP.
 func withRateLimit(next http.Handler) http.Handler {
-    limiter := newIPRateLimiter(5, 10) // 5 req/sec, burst 10
-    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        ip := clientIP(r)
-        if !limiter.Allow(ip) {
-            http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
-            return
-        }
-        next.ServeHTTP(w, r)
-    })
+	limiter := newIPRateLimiter(5, 10) // 5 req/sec, burst 10
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ip := clientIP(r)
+		if !limiter.Allow(ip) {
+			http.Error(w, "rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // withOptionalBodyLogging conditionally adds request body logging middleware.
 // Only enabled via ENABLE_REQUEST_LOGGING=true flag (disabled by default).
 func withOptionalBodyLogging(enabled bool, next http.Handler) http.Handler {
-    if !enabled {
-        return next
-    }
-    return middleware.RequestBodyLoggingMiddleware(next)
+	if !enabled {
+		return next
+	}
+	return middleware.RequestBodyLoggingMiddleware(next)
 }
-

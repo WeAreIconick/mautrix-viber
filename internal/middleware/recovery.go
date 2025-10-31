@@ -22,13 +22,12 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 					"remote_addr", r.RemoteAddr,
 					"stack", string(debug.Stack()),
 				)
-				
+
 				// Return 500 error
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
 		}()
-		
+
 		next.ServeHTTP(w, r)
 	})
 }
-

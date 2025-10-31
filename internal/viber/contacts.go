@@ -11,13 +11,13 @@ func (c *Client) HandleContact(ctx context.Context, contactName, phoneNumber, av
 	if c.matrix == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Format contact card as text
 	contactText := fmt.Sprintf("📇 Contact Card\nName: %s\nPhone: %s", contactName, phoneNumber)
 	if avatarURL != "" {
 		contactText += fmt.Sprintf("\nAvatar: %s", avatarURL)
 	}
-	
+
 	return c.matrix.SendText(ctx, contactText)
 }
 
@@ -26,7 +26,7 @@ func (c *Client) ForwardContact(ctx context.Context, contactData string) error {
 	if c.matrix == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Parse vCard data if needed
 	text := fmt.Sprintf("[Contact Card] %s", contactData)
 	return c.matrix.SendText(ctx, text)
@@ -42,4 +42,3 @@ func (c *Client) SendContactToViber(ctx context.Context, receiver string, contac
 	_, err := c.SendContact(ctx, receiver, contact)
 	return err
 }
-

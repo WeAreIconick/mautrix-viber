@@ -108,7 +108,7 @@ func HandleMentions(msg *event.MessageEventContent) []id.UserID {
 	if msg.FormattedBody != "" {
 		text = msg.FormattedBody
 	}
-	
+
 	// Simple regex-like parsing for @user:domain mentions
 	words := strings.Fields(text)
 	for _, word := range words {
@@ -142,7 +142,7 @@ func FormatMentions(text string, mentions []id.UserID) string {
 func FormatForViber(msg *event.MessageEventContent, mxClient *mautrix.Client, roomID id.RoomID, ctx context.Context) string {
 	// Get base message text
 	text := FormatMessage(msg)
-	
+
 	// Handle reply if present
 	if replyToID, replyText := HandleReply(msg); replyToID != "" && mxClient != nil {
 		// Try to get original message (best-effort)
@@ -153,13 +153,12 @@ func FormatForViber(msg *event.MessageEventContent, mxClient *mautrix.Client, ro
 			}
 		}
 	}
-	
+
 	// Handle mentions
 	mentions := HandleMentions(msg)
 	if len(mentions) > 0 {
 		text = FormatMentions(text, mentions)
 	}
-	
+
 	return text
 }
-

@@ -9,10 +9,10 @@ import (
 
 // MockViberAPI provides a mock Viber API server for testing.
 type MockViberAPI struct {
-	mu         sync.Mutex
+	mu           sync.Mutex
 	sentMessages []ViberMessage
-	webhookURL  string
-	errorRate   float64
+	webhookURL   string
+	errorRate    float64
 }
 
 // ViberMessage represents a message sent via mock Viber API.
@@ -33,12 +33,12 @@ func NewMockViberAPI() *MockViberAPI {
 func (m *MockViberAPI) SendText(ctx context.Context, receiverID, text string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if m.errorRate > 0 {
 		// Simulate errors based on error rate
 		return fmt.Errorf("mock API error")
 	}
-	
+
 	m.sentMessages = append(m.sentMessages, ViberMessage{
 		ReceiverID: receiverID,
 		Message:    text,
@@ -74,4 +74,3 @@ func (m *MockViberAPI) SetWebhookURL(url string) {
 	defer m.mu.Unlock()
 	m.webhookURL = url
 }
-

@@ -8,16 +8,21 @@ import (
 )
 
 var (
+	// ErrCircuitOpen indicates the circuit breaker is open and rejecting requests.
 	ErrCircuitOpen = errors.New("circuit breaker is open")
-	ErrTimeout     = errors.New("operation timeout")
+	// ErrTimeout indicates an operation timeout.
+	ErrTimeout = errors.New("operation timeout")
 )
 
 // State represents circuit breaker state.
 type State int
 
 const (
+	// StateClosed means the circuit is closed (normal operation).
 	StateClosed State = iota
+	// StateOpen means the circuit is open (failures detected).
 	StateOpen
+	// StateHalfOpen means the circuit is testing if service recovered.
 	StateHalfOpen
 )
 
@@ -47,7 +52,7 @@ func NewCircuitBreaker(maxFailures, maxSuccesses int, timeout time.Duration) *Ci
 func (cb *CircuitBreaker) Execute(fn func() error) error {
 	cb.mu.Lock()
 	defer cb.mu.Unlock()
-	
+
 	// Check if circuit should transition from open to half-open
 	if cb.state == StateOpen {
 		if time.Since(cb.lastFailureTime) > cb.timeout {
@@ -57,15 +62,15 @@ func (cb *CircuitBreaker) Execute(fn func() error) error {
 			return ErrCircuitOpen
 		}
 	}
-	
+
 	// Execute function
 	err := fn()
-	
+
 	if err != nil {
 		cb.onFailure()
 		return err
 	}
-	
+
 	cb.onSuccess()
 	return nil
 }
@@ -74,7 +79,7 @@ func (cb *CircuitBreaker) Execute(fn func() error) error {
 func (cb *CircuitBreaker) onFailure() {
 	cb.failureCount++
 	cb.lastFailureTime = time.Now()
-	
+
 	if cb.state == StateHalfOpen {
 		// Half-open -> Open on any failure
 		cb.state = StateOpen
@@ -89,7 +94,7 @@ func (cb *CircuitBreaker) onFailure() {
 // onSuccess handles a success.
 func (cb *CircuitBreaker) onSuccess() {
 	cb.failureCount = 0
-	
+
 	if cb.state == StateHalfOpen {
 		cb.successCount++
 		if cb.successCount >= cb.maxSuccesses {
@@ -115,4 +120,3 @@ func (cb *CircuitBreaker) Reset() {
 	cb.failureCount = 0
 	cb.successCount = 0
 }
-

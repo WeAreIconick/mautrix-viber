@@ -15,18 +15,19 @@ import (
 
 // Config holds all bridge configuration settings.
 // Fields are loaded from environment variables via FromEnv().
+// All configuration is documented in the README.
 type Config struct {
 	// Viber API configuration
-	APIToken      string // Viber Bot API token (required)
-	WebhookURL    string // Public HTTPS URL for Viber webhooks (required)
+	APIToken        string // Viber Bot API token (required)
+	WebhookURL      string // Public HTTPS URL for Viber webhooks (required)
 	ViberAPIBaseURL string // Viber API base URL (default: "https://chatapi.viber.com")
-	ListenAddress string // HTTP server listen address (default: ":8080")
-	
+	ListenAddress   string // HTTP server listen address (default: ":8080")
+
 	// Matrix client configuration
 	MatrixHomeserverURL string // Matrix homeserver base URL (required if bridging)
 	MatrixAccessToken   string // Matrix access token (required if bridging)
 	MatrixDefaultRoomID string // Default Matrix room for bridged messages (required if bridging)
-	
+
 	// Optional features
 	ViberDefaultReceiverID string        // Default Viber user ID for Matrix → Viber forwarding (optional)
 	DatabasePath           string        // SQLite database path (default: "./data/bridge.db")
@@ -51,14 +52,14 @@ func FromEnv() Config {
 	if cfg.ListenAddress == "" {
 		cfg.ListenAddress = ":8080"
 	}
-    cfg.MatrixHomeserverURL = os.Getenv("MATRIX_HOMESERVER_URL")
-    cfg.MatrixAccessToken = os.Getenv("MATRIX_ACCESS_TOKEN")
-    cfg.MatrixDefaultRoomID = os.Getenv("MATRIX_DEFAULT_ROOM_ID")
-    cfg.ViberDefaultReceiverID = os.Getenv("VIBER_DEFAULT_RECEIVER_ID")
-    cfg.DatabasePath = os.Getenv("DATABASE_PATH")
-    if cfg.DatabasePath == "" {
-        cfg.DatabasePath = "./data/bridge.db"
-    }
+	cfg.MatrixHomeserverURL = os.Getenv("MATRIX_HOMESERVER_URL")
+	cfg.MatrixAccessToken = os.Getenv("MATRIX_ACCESS_TOKEN")
+	cfg.MatrixDefaultRoomID = os.Getenv("MATRIX_DEFAULT_ROOM_ID")
+	cfg.ViberDefaultReceiverID = os.Getenv("VIBER_DEFAULT_RECEIVER_ID")
+	cfg.DatabasePath = os.Getenv("DATABASE_PATH")
+	if cfg.DatabasePath == "" {
+		cfg.DatabasePath = "./data/bridge.db"
+	}
 	// HTTP client timeout (in seconds)
 	if timeoutStr := os.Getenv("HTTP_CLIENT_TIMEOUT"); timeoutStr != "" {
 		if timeoutSec, err := strconv.Atoi(timeoutStr); err == nil && timeoutSec > 0 {
@@ -70,7 +71,7 @@ func FromEnv() Config {
 		cfg.HTTPClientTimeout = 15 * time.Second // Default
 	}
 	cfg.RedisURL = os.Getenv("REDIS_URL")
-	
+
 	// Cache TTL (in minutes)
 	if ttlStr := os.Getenv("CACHE_TTL"); ttlStr != "" {
 		if ttlMin, err := strconv.Atoi(ttlStr); err == nil && ttlMin > 0 {
@@ -81,10 +82,10 @@ func FromEnv() Config {
 	} else {
 		cfg.CacheTTL = 5 * time.Minute // Default
 	}
-	
+
 	// Enable request logging (for debugging only - should be disabled in production)
 	cfg.EnableRequestLogging = os.Getenv("ENABLE_REQUEST_LOGGING") == "true"
-	
+
 	return cfg
 }
 
@@ -108,11 +109,11 @@ func (c *Config) Validate() error {
 			errors = append(errors, "VIBER_WEBHOOK_URL should use HTTPS in production")
 		}
 	}
-	
+
 	if c.ListenAddress == "" {
 		c.ListenAddress = ":8080" // Use default if not set
 	}
-	
+
 	// Matrix configuration validation (required if bridging)
 	hasMatrixConfig := c.MatrixHomeserverURL != "" || c.MatrixAccessToken != "" || c.MatrixDefaultRoomID != ""
 	if hasMatrixConfig {
@@ -123,11 +124,11 @@ func (c *Config) Validate() error {
 				errors = append(errors, fmt.Sprintf("MATRIX_HOMESERVER_URL is invalid: %v", err))
 			}
 		}
-		
+
 		if c.MatrixAccessToken == "" {
 			errors = append(errors, "MATRIX_ACCESS_TOKEN is required when Matrix bridging is enabled")
 		}
-		
+
 		if c.MatrixDefaultRoomID == "" {
 			errors = append(errors, "MATRIX_DEFAULT_ROOM_ID is required when Matrix bridging is enabled")
 		} else {
@@ -137,10 +138,10 @@ func (c *Config) Validate() error {
 			}
 		}
 	}
-	
+
 	if len(errors) > 0 {
 		return fmt.Errorf("configuration validation failed:\n  %s", strings.Join(errors, "\n  "))
 	}
-	
+
 	return nil
 }

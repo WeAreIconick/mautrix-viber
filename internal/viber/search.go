@@ -12,13 +12,13 @@ import (
 
 // SearchResult represents a search result.
 type SearchResult struct {
-	MessageID   string
-	ViberMsgID  string
+	MessageID     string
+	ViberMsgID    string
 	MatrixEventID string
-	Text        string
-	Sender      string
-	Timestamp   time.Time
-	RoomID      string
+	Text          string
+	Sender        string
+	Timestamp     time.Time
+	RoomID        string
 }
 
 // SearchManager manages message search.
@@ -38,16 +38,16 @@ func (sm *SearchManager) SearchMessages(ctx context.Context, query string, limit
 	if sm.db == nil {
 		return nil, fmt.Errorf("database not configured")
 	}
-	
+
 	if limit <= 0 || limit > 100 {
 		limit = 50 // Default limit
 	}
-	
+
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return nil, fmt.Errorf("search query cannot be empty")
 	}
-	
+
 	// Message content search requires extending the database schema to store
 	// message text content. Current schema only stores message ID mappings.
 	// To implement: add messages table with content column and FTS index
@@ -60,11 +60,11 @@ func (sm *SearchManager) SearchBySender(ctx context.Context, senderID string, li
 	if sm.db == nil {
 		return nil, fmt.Errorf("database not configured")
 	}
-	
+
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
-	
+
 	// This feature requires message content storage in database
 	// Query would be: SELECT * FROM messages WHERE sender_id = ? LIMIT ?
 	return nil, fmt.Errorf("sender search requires message content storage in database")
@@ -76,15 +76,15 @@ func (sm *SearchManager) SearchByDateRange(ctx context.Context, start, end time.
 	if sm.db == nil {
 		return nil, fmt.Errorf("database not configured")
 	}
-	
+
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
-	
+
 	if start.After(end) {
 		return nil, fmt.Errorf("start date must be before end date")
 	}
-	
+
 	// Date range search requires message content storage in database with timestamps
 	// Query would be: SELECT * FROM messages WHERE timestamp BETWEEN ? AND ? ORDER BY timestamp LIMIT ?
 	// Requires extending database schema to include message timestamps
@@ -94,4 +94,3 @@ func (sm *SearchManager) SearchByDateRange(ctx context.Context, start, end time.
 	_ = limit
 	return nil, fmt.Errorf("date range search requires database schema extension with message timestamp storage")
 }
-

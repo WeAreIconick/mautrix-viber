@@ -12,15 +12,15 @@ import (
 // GhostUser represents a Matrix ghost user mapped to a Viber contact.
 type GhostUser struct {
 	MatrixUserID id.UserID
-	ViberUserID   string
-	DisplayName   string
-	AvatarURL     string
+	ViberUserID  string
+	DisplayName  string
+	AvatarURL    string
 }
 
 // Puppeting manages Matrix ghost users for Viber contacts.
 type Puppeting struct {
-	mxClient  *mautrix.Client
-	domain    string // Matrix homeserver domain for ghost user IDs
+	mxClient *mautrix.Client
+	domain   string // Matrix homeserver domain for ghost user IDs
 }
 
 // NewPuppeting creates a new puppeting manager.
@@ -44,7 +44,7 @@ func (p *Puppeting) EnsureGhostUser(ctx context.Context, viberUserID, displayNam
 	}
 
 	ghostID := p.GetGhostUserID(viberUserID)
-	
+
 	// Set display name if provided
 	// NOTE: SetDisplayName doesn't take userID parameter in mautrix v0.25+
 	// This requires proper appservice puppeting configuration
@@ -71,7 +71,7 @@ func (p *Puppeting) EnsureGhostUser(ctx context.Context, viberUserID, displayNam
 // GetGhostUser retrieves ghost user information (best-effort).
 func (p *Puppeting) GetGhostUser(ctx context.Context, viberUserID string) (*GhostUser, error) {
 	ghostID := p.GetGhostUserID(viberUserID)
-	
+
 	// Try to get profile (may fail without appservice)
 	profile, err := p.mxClient.GetProfile(ctx, ghostID)
 	if err != nil {
@@ -88,4 +88,3 @@ func (p *Puppeting) GetGhostUser(ctx context.Context, viberUserID string) (*Ghos
 		AvatarURL:    profile.AvatarURL.String(),
 	}, nil
 }
-

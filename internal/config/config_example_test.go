@@ -9,8 +9,8 @@ import (
 
 func ExampleFromEnv() {
 	// Set required environment variables
-	os.Setenv("VIBER_API_TOKEN", "test_token")
-	os.Setenv("VIBER_WEBHOOK_URL", "https://example.com/webhook")
+	_ = os.Setenv("VIBER_API_TOKEN", "test_token")
+	_ = os.Setenv("VIBER_WEBHOOK_URL", "https://example.com/webhook")
 
 	// Load configuration from environment
 	cfg := config.FromEnv()
@@ -20,8 +20,8 @@ func ExampleFromEnv() {
 	fmt.Printf("Default listen address: %s\n", cfg.ListenAddress)
 
 	// Cleanup
-	os.Unsetenv("VIBER_API_TOKEN")
-	os.Unsetenv("VIBER_WEBHOOK_URL")
+	_ = os.Unsetenv("VIBER_API_TOKEN")
+	_ = os.Unsetenv("VIBER_WEBHOOK_URL")
 
 	// Output:
 	// API Token configured: true
@@ -59,8 +59,8 @@ func ExampleConfig_Validate() {
 func ExampleConfig_Validate_withMatrix() {
 	// Create a configuration with Matrix bridging
 	cfg := &config.Config{
-		APIToken:           "valid_token",
-		WebhookURL:         "https://example.com/webhook",
+		APIToken:            "valid_token",
+		WebhookURL:          "https://example.com/webhook",
 		MatrixHomeserverURL: "https://matrix.example.com",
 		MatrixAccessToken:   "matrix_token",
 		MatrixDefaultRoomID: "!abc:matrix.example.com",
@@ -77,4 +77,3 @@ func ExampleConfig_Validate_withMatrix() {
 	// Output:
 	// Matrix configuration is valid
 }
-

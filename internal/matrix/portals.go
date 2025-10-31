@@ -13,10 +13,10 @@ import (
 // PortalRoom represents a Matrix room mapped to a Viber chat.
 type PortalRoom struct {
 	MatrixRoomID id.RoomID
-	ViberChatID   string
-	Name          string
-	Topic         string
-	AvatarURL     string
+	ViberChatID  string
+	Name         string
+	Topic        string
+	AvatarURL    string
 }
 
 // Portals manages Matrix portal rooms for Viber chats.
@@ -39,8 +39,8 @@ func (p *Portals) GetOrCreatePortalRoom(ctx context.Context, viberChatID, name s
 
 	// Create room with Viber chat name
 	req := &mautrix.ReqCreateRoom{
-		Name: name,
-		Topic: fmt.Sprintf("Viber chat: %s", viberChatID),
+		Name:   name,
+		Topic:  fmt.Sprintf("Viber chat: %s", viberChatID),
 		Preset: "public_chat", // Or "private_chat" based on chat type
 	}
 
@@ -101,4 +101,3 @@ func (p *Portals) InviteGhostUser(ctx context.Context, roomID id.RoomID, ghostUs
 	}
 	return nil
 }
-

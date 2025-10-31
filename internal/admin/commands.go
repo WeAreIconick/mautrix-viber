@@ -92,13 +92,13 @@ func (h *Handler) HandleMessage(ctx context.Context, evt *event.Event, msg *even
 	cmd, ok := h.commands[cmdName]
 	if !ok {
 		// Unknown command
-		h.reply(ctx, evt.RoomID, fmt.Sprintf("Unknown command: %s. Use !bridge help", cmdName))
+		_ = h.reply(ctx, evt.RoomID, fmt.Sprintf("Unknown command: %s. Use !bridge help", cmdName))
 		return nil
 	}
 
 	// Check permissions
 	if !h.isAllowed(evt.Sender) {
-		h.reply(ctx, evt.RoomID, "You don't have permission to run bridge commands.")
+		_ = h.reply(ctx, evt.RoomID, "You don't have permission to run bridge commands.")
 		return nil
 	}
 
@@ -106,12 +106,12 @@ func (h *Handler) HandleMessage(ctx context.Context, evt *event.Event, msg *even
 	args := parts[2:]
 	response, err := cmd.Handler(ctx, args, evt.RoomID, evt.Sender)
 	if err != nil {
-		h.reply(ctx, evt.RoomID, fmt.Sprintf("Error: %v", err))
+		_ = h.reply(ctx, evt.RoomID, fmt.Sprintf("Error: %v", err))
 		return err
 	}
 
 	if response != "" {
-		h.reply(ctx, evt.RoomID, response)
+		_ = h.reply(ctx, evt.RoomID, response)
 	}
 
 	return nil
@@ -146,14 +146,14 @@ func (h *Handler) handleLink(ctx context.Context, args []string, roomID id.RoomI
 	if len(args) < 1 {
 		return "", fmt.Errorf("usage: !bridge link <viber-user-id>")
 	}
-	
+
 	if h.db == nil {
 		return "", fmt.Errorf("database not configured")
 	}
-	
+
 	viberUserID := args[0]
 	matrixUserID := string(userID)
-	
+
 	// Check if Viber user exists
 	user, err := h.db.GetViberUser(ctx, viberUserID)
 	if err != nil {
@@ -162,12 +162,12 @@ func (h *Handler) handleLink(ctx context.Context, args []string, roomID id.RoomI
 	if user == nil {
 		return "", fmt.Errorf("Viber user %s not found. They need to send a message first", viberUserID)
 	}
-	
+
 	// Link the user
 	if err := h.db.LinkViberUser(ctx, viberUserID, matrixUserID); err != nil {
 		return "", fmt.Errorf("failed to link user: %w", err)
 	}
-	
+
 	return fmt.Sprintf("✅ Successfully linked Viber user %s (%s) to Matrix user %s", viberUserID, user.ViberName, userID), nil
 }
 
@@ -175,19 +175,19 @@ func (h *Handler) handleUnlink(ctx context.Context, args []string, roomID id.Roo
 	if h.db == nil {
 		return "", fmt.Errorf("database not configured")
 	}
-	
+
 	matrixUserID := string(userID)
-	
+
 	// Find Viber user linked to this Matrix user
 	// Query: SELECT viber_id FROM viber_users WHERE matrix_user_id = ?
 	// Then set matrix_user_id to NULL for that user
-	
+
 	// For now, we use a direct SQL update approach
 	// In production, add UnlinkMatrixUser method to database layer
 	if err := h.unlinkMatrixUser(ctx, matrixUserID); err != nil {
 		return "", fmt.Errorf("failed to unlink user: %w", err)
 	}
-	
+
 	return fmt.Sprintf("✅ Successfully unlinked Matrix user %s from Viber", userID), nil
 }
 
@@ -202,14 +202,14 @@ func (h *Handler) unlinkMatrixUser(ctx context.Context, matrixUserID string) err
 func (h *Handler) handleStatus(ctx context.Context, args []string, roomID id.RoomID, userID id.UserID) (string, error) {
 	var status strings.Builder
 	status.WriteString("**Bridge Status**\n\n")
-	
+
 	// Matrix connection status
 	if h.mxClient != nil {
 		status.WriteString("✅ Matrix: Connected\n")
 	} else {
 		status.WriteString("❌ Matrix: Not configured\n")
 	}
-	
+
 	// Database status
 	if h.db != nil {
 		// Test connection
@@ -221,10 +221,10 @@ func (h *Handler) handleStatus(ctx context.Context, args []string, roomID id.Roo
 	} else {
 		status.WriteString("❌ Database: Not configured\n")
 	}
-	
+
 	// Webhook status (would need access to Viber client)
 	status.WriteString("✅ Webhook: Registered\n")
-	
+
 	return status.String(), nil
 }
 
@@ -240,4 +240,3 @@ func (h *Handler) handleHelp(ctx context.Context, args []string, roomID id.RoomI
 func (h *Handler) handlePing(ctx context.Context, args []string, roomID id.RoomID, userID id.UserID) (string, error) {
 	return "pong", nil
 }
-

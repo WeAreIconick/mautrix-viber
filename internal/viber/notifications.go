@@ -26,10 +26,10 @@ func (nm *NotificationManager) ConfigurePushRules(ctx context.Context, viberUser
 	if nm.mxClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Get Matrix user ID for Viber user
 	ghostID := id.UserID(fmt.Sprintf("@viber_%s:example.com", viberUserID))
-	
+
 	if muteNotifications {
 		// Mute notifications by setting push rule
 		// Requires Matrix push rules API access
@@ -72,4 +72,3 @@ func (nm *NotificationManager) SetRoomNotifications(ctx context.Context, roomID 
 	_ = mute
 	return fmt.Errorf("room notification settings require Matrix push rules API implementation")
 }
-

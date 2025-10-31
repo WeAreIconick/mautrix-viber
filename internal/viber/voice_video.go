@@ -13,28 +13,28 @@ func (c *Client) HandleVoiceMessage(ctx context.Context, mediaURL string, durati
 	if c.matrix == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Download voice message
 	resp, err := c.httpClient.Get(mediaURL)
 	if err != nil {
 		return fmt.Errorf("download voice: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)
 	}
-	
+
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("read voice data: %w", err)
 	}
-	
+
 	mimeType := resp.Header.Get("Content-Type")
 	if mimeType == "" {
 		mimeType = "audio/ogg" // Default for voice messages
 	}
-	
+
 	// Upload to Matrix and send as m.audio
 	// Audio forwarding requires Matrix client SendAudio method implementation
 	// For now, send as file
@@ -46,28 +46,28 @@ func (c *Client) HandleVideoMessage(ctx context.Context, mediaURL, thumbnailURL 
 	if c.matrix == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Download video
 	resp, err := c.httpClient.Get(mediaURL)
 	if err != nil {
 		return fmt.Errorf("download video: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)
 	}
-	
+
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("read video data: %w", err)
 	}
-	
+
 	mimeType := resp.Header.Get("Content-Type")
 	if mimeType == "" {
 		mimeType = "video/mp4" // Default
 	}
-	
+
 	// Upload to Matrix and send as m.video
 	// Video forwarding requires Matrix client SendVideo method implementation
 	// For now, send as file
@@ -80,7 +80,7 @@ func (c *Client) TranscodeIfNeeded(ctx context.Context, inputData []byte, inputM
 	if inputMime == outputMime {
 		return inputData, nil
 	}
-	
+
 	// Transcoding requires external media processing tools (ffmpeg, imagemagick, etc.)
 	// Implementation would need to:
 	// 1. Detect available transcoding tools
@@ -90,4 +90,3 @@ func (c *Client) TranscodeIfNeeded(ctx context.Context, inputData []byte, inputM
 	_ = ctx
 	return nil, fmt.Errorf("media transcoding from %s to %s requires external tools (ffmpeg) - not currently implemented", inputMime, outputMime)
 }
-

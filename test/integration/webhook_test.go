@@ -17,7 +17,7 @@ import (
 // TestWebhookIntegration tests the full webhook processing flow.
 func TestWebhookIntegration(t *testing.T) {
 	t.Skip("Requires full test environment setup")
-	
+
 	// This would test:
 	// 1. Receiving webhook with valid signature
 	// 2. Parsing webhook payload
@@ -39,26 +39,25 @@ func TestWebhookSignatureFlow(t *testing.T) {
 			Text: "Hello, world!",
 		},
 	}
-	
+
 	bodyBytes, _ := json.Marshal(payload)
 	token := "test-api-token"
-	
+
 	// Calculate signature
 	mac := hmac.New(sha256.New, []byte(token))
 	mac.Write(bodyBytes)
 	signature := hex.EncodeToString(mac.Sum(nil))
-	
+
 	// Create request
 	req := httptest.NewRequest(http.MethodPost, "/viber/webhook", bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Viber-Content-Signature", signature)
-	
+
 	// This test would require a full setup with database and Matrix client
 	// For now, just verify the signature calculation
 	t.Logf("Calculated signature: %s", signature)
-	
+
 	if len(signature) != 64 { // SHA256 hex is 64 chars
 		t.Errorf("Invalid signature length: %d", len(signature))
 	}
 }
-

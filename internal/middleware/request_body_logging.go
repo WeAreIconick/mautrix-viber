@@ -21,9 +21,9 @@ func RequestBodyLoggingMiddleware(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		
+
 		requestID := logger.GetRequestID(r.Context())
-		
+
 		// Read and restore request body
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -36,7 +36,7 @@ func RequestBodyLoggingMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		r.Body = io.NopCloser(bytes.NewReader(body))
-		
+
 		// Log request body (only first 1KB to avoid huge logs)
 		if len(body) > 0 {
 			bodyPreview := string(body)
@@ -50,14 +50,14 @@ func RequestBodyLoggingMiddleware(next http.Handler) http.Handler {
 				"body_preview", bodyPreview,
 			)
 		}
-		
+
 		// Wrap response writer to capture response
 		wrapped := &bodyResponseWriter{
 			ResponseWriter: w,
 			requestID:      requestID,
 			path:           r.URL.Path,
 		}
-		
+
 		next.ServeHTTP(wrapped, r)
 	})
 }
@@ -71,24 +71,23 @@ type bodyResponseWriter struct {
 
 func (rw *bodyResponseWriter) Write(b []byte) (int, error) {
 	rw.wroteBody = true
-	
+
 	// Log response body preview (only first 512B to avoid huge logs)
 	bodyPreview := string(b)
 	if len(bodyPreview) > 512 {
 		bodyPreview = bodyPreview[:512] + "... (truncated)"
 	}
-	
+
 	slog.Debug("response body",
 		"request_id", rw.requestID,
 		"path", rw.path,
 		"size_bytes", len(b),
 		"body_preview", bodyPreview,
 	)
-	
+
 	return rw.ResponseWriter.Write(b)
 }
 
 func (rw *bodyResponseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
-

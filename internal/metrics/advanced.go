@@ -88,4 +88,3 @@ func RecordOperationDuration(operation string, duration time.Duration) {
 func RecordActiveConnections(connectionType string, count int) {
 	ActiveConnections.WithLabelValues(connectionType).Set(float64(count))
 }
-

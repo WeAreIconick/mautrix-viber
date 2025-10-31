@@ -22,15 +22,15 @@ func NewCache(redisURL string, ttl time.Duration) (*Cache, error) {
 	if err != nil {
 		return nil, fmt.Errorf("parse redis URL: %w", err)
 	}
-	
+
 	client := redis.NewClient(opt)
-	
+
 	// Test connection
 	ctx := context.Background()
 	if err := client.Ping(ctx).Err(); err != nil {
 		return nil, fmt.Errorf("redis ping failed: %w", err)
 	}
-	
+
 	return &Cache{
 		client: client,
 		ttl:    ttl,
@@ -42,7 +42,7 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 	if c == nil || c.client == nil {
 		return nil, fmt.Errorf("cache not configured")
 	}
-	
+
 	val, err := c.client.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return nil, nil // Key not found
@@ -50,7 +50,7 @@ func (c *Cache) Get(ctx context.Context, key string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("redis get: %w", err)
 	}
-	
+
 	return []byte(val), nil
 }
 
@@ -59,7 +59,7 @@ func (c *Cache) Set(ctx context.Context, key string, value []byte) error {
 	if c == nil || c.client == nil {
 		return fmt.Errorf("cache not configured")
 	}
-	
+
 	return c.client.Set(ctx, key, value, c.ttl).Err()
 }
 
@@ -68,7 +68,7 @@ func (c *Cache) Delete(ctx context.Context, key string) error {
 	if c == nil || c.client == nil {
 		return fmt.Errorf("cache not configured")
 	}
-	
+
 	return c.client.Del(ctx, key).Err()
 }
 
@@ -81,7 +81,7 @@ func (c *Cache) GetJSON(ctx context.Context, key string, v interface{}) error {
 	if data == nil {
 		return fmt.Errorf("key not found")
 	}
-	
+
 	return json.Unmarshal(data, v)
 }
 
@@ -91,7 +91,7 @@ func (c *Cache) SetJSON(ctx context.Context, key string, v interface{}) error {
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
-	
+
 	return c.Set(ctx, key, data)
 }
 
@@ -102,4 +102,3 @@ func (c *Cache) Close() error {
 	}
 	return c.client.Close()
 }
-

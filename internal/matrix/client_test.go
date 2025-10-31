@@ -22,4 +22,3 @@ func TestSendImage(t *testing.T) {
 func TestRedactEvent(t *testing.T) {
 	t.Skip("Test requires mock Matrix client implementation - see test/integration/matrix_mock.go")
 }
-

@@ -14,7 +14,7 @@ func TestFromEnv(t *testing.T) {
 	os.Setenv("MATRIX_HOMESERVER_URL", "https://matrix.test.com")
 	os.Setenv("MATRIX_ACCESS_TOKEN", "test-access-token")
 	os.Setenv("MATRIX_DEFAULT_ROOM_ID", "!test:test.com")
-	
+
 	defer func() {
 		os.Unsetenv("VIBER_API_TOKEN")
 		os.Unsetenv("VIBER_WEBHOOK_URL")
@@ -23,17 +23,17 @@ func TestFromEnv(t *testing.T) {
 		os.Unsetenv("MATRIX_ACCESS_TOKEN")
 		os.Unsetenv("MATRIX_DEFAULT_ROOM_ID")
 	}()
-	
+
 	cfg := FromEnv()
-	
+
 	if cfg.APIToken != "test-token" {
 		t.Errorf("Expected APIToken 'test-token', got '%s'", cfg.APIToken)
 	}
-	
+
 	if cfg.WebhookURL != "https://test.com/webhook" {
 		t.Errorf("Expected WebhookURL 'https://test.com/webhook', got '%s'", cfg.WebhookURL)
 	}
-	
+
 	if cfg.ListenAddress != ":9090" {
 		t.Errorf("Expected ListenAddress ':9090', got '%s'", cfg.ListenAddress)
 	}
@@ -42,9 +42,9 @@ func TestFromEnv(t *testing.T) {
 func TestFromEnvDefaults(t *testing.T) {
 	// Clear environment
 	os.Unsetenv("LISTEN_ADDRESS")
-	
+
 	cfg := FromEnv()
-	
+
 	// Should default to :8080
 	if cfg.ListenAddress != ":8080" {
 		t.Errorf("Expected default ListenAddress ':8080', got '%s'", cfg.ListenAddress)
@@ -94,7 +94,7 @@ func TestConfigValidate(t *testing.T) {
 			wantErr: true,
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
@@ -104,4 +104,3 @@ func TestConfigValidate(t *testing.T) {
 		})
 	}
 }
-

@@ -1,40 +1,40 @@
 package viber
 
 import (
-    "bytes"
-    "context"
-    "encoding/json"
-    "fmt"
-    "io"
-    "crypto/hmac"
-    "crypto/sha256"
-    "encoding/hex"
-    "net/http"
-    "strings"
-    "time"
+	"bytes"
+	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
 
-    mx "github.com/example/mautrix-viber/internal/matrix"
-    "github.com/example/mautrix-viber/internal/database"
-    "github.com/example/mautrix-viber/internal/logger"
-    "github.com/example/mautrix-viber/internal/metrics"
+	"github.com/example/mautrix-viber/internal/database"
+	"github.com/example/mautrix-viber/internal/logger"
+	mx "github.com/example/mautrix-viber/internal/matrix"
+	"github.com/example/mautrix-viber/internal/metrics"
 )
 
 // Config holds Viber API configuration.
 type Config struct {
-	APIToken       string        // Viber Bot API token for authentication
-	WebhookURL     string        // Public HTTPS URL where Viber will send webhooks
-	ViberAPIBaseURL string       // Viber API base URL (default: "https://chatapi.viber.com")
-	ListenAddress  string        // HTTP server listen address (optional)
-	HTTPTimeout    time.Duration // HTTP client timeout (default: 15s)
+	APIToken        string        // Viber Bot API token for authentication
+	WebhookURL      string        // Public HTTPS URL where Viber will send webhooks
+	ViberAPIBaseURL string        // Viber API base URL (default: "https://chatapi.viber.com")
+	ListenAddress   string        // HTTP server listen address (optional)
+	HTTPTimeout     time.Duration // HTTP client timeout (default: 15s)
 }
 
 // Client manages Viber API interactions and webhook handling.
 // It forwards messages to Matrix and stores state in the database.
 type Client struct {
-	config     Config          // Viber API configuration
-	httpClient *http.Client    // HTTP client for API requests (15s timeout)
-	matrix     *mx.Client      // Matrix client for forwarding messages (may be nil)
-	db         *database.DB    // Database for persistence (may be nil)
+	config     Config       // Viber API configuration
+	httpClient *http.Client // HTTP client for API requests (15s timeout)
+	matrix     *mx.Client   // Matrix client for forwarding messages (may be nil)
+	db         *database.DB // Database for persistence (may be nil)
 }
 
 // NewClient creates a new Viber client with the given configuration.
@@ -56,44 +56,44 @@ func NewClient(cfg Config, matrixClient *mx.Client, db *database.DB) *Client {
 // This should be called on startup to ensure Viber knows where to send events.
 // Returns an error if registration fails.
 func (c *Client) EnsureWebhook(ctx context.Context) error {
-    if c.config.WebhookURL == "" || c.config.APIToken == "" {
-        return fmt.Errorf("webhook url or api token not configured")
-    }
-    apiBaseURL := c.config.ViberAPIBaseURL
-    if apiBaseURL == "" {
-        apiBaseURL = "https://chatapi.viber.com"
-    }
-    // Build payload for set_webhook
-    body := map[string]any{
-        "url":         c.config.WebhookURL,
-        "event_types": []string{"message", "subscribed", "unsubscribed", "conversation_started"},
-    }
-    data, err := json.Marshal(body)
-    if err != nil {
-        return fmt.Errorf("marshal webhook payload: %w", err)
-    }
-    req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiBaseURL+"/pa/set_webhook", bytes.NewReader(data))
-    if err != nil {
-        return fmt.Errorf("create set_webhook request: %w", err)
-    }
-    req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("X-Viber-Auth-Token", c.config.APIToken)
-    resp, err := c.httpClient.Do(req)
-    if err != nil {
-        return fmt.Errorf("set_webhook request failed: %w", err)
-    }
-    defer resp.Body.Close()
-    if resp.StatusCode != http.StatusOK {
-        return fmt.Errorf("set_webhook unexpected status: %s", resp.Status)
-    }
-    var wr WebhookResponse
-    if err := json.NewDecoder(resp.Body).Decode(&wr); err != nil {
-        return fmt.Errorf("decode set_webhook response: %w", err)
-    }
-    if wr.Status != 0 {
-        return fmt.Errorf("set_webhook failed: %d %s", wr.Status, wr.StatusMessage)
-    }
-    return nil
+	if c.config.WebhookURL == "" || c.config.APIToken == "" {
+		return fmt.Errorf("webhook url or api token not configured")
+	}
+	apiBaseURL := c.config.ViberAPIBaseURL
+	if apiBaseURL == "" {
+		apiBaseURL = "https://chatapi.viber.com"
+	}
+	// Build payload for set_webhook
+	body := map[string]any{
+		"url":         c.config.WebhookURL,
+		"event_types": []string{"message", "subscribed", "unsubscribed", "conversation_started"},
+	}
+	data, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal webhook payload: %w", err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiBaseURL+"/pa/set_webhook", bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("create set_webhook request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Viber-Auth-Token", c.config.APIToken)
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("set_webhook request failed: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("set_webhook unexpected status: %s", resp.Status)
+	}
+	var wr WebhookResponse
+	if err := json.NewDecoder(resp.Body).Decode(&wr); err != nil {
+		return fmt.Errorf("decode set_webhook response: %w", err)
+	}
+	if wr.Status != 0 {
+		return fmt.Errorf("set_webhook failed: %d %s", wr.Status, wr.StatusMessage)
+	}
+	return nil
 }
 
 // WebhookHandler processes incoming Viber webhook callbacks.
@@ -103,8 +103,8 @@ func (c *Client) EnsureWebhook(ctx context.Context) error {
 // Security: All requests are verified using HMAC-SHA256 signature from the
 // X-Viber-Content-Signature header before processing.
 func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
-	
+	defer func() { _ = r.Body.Close() }()
+
 	// Read body once for signature verification and decoding
 	// We read the entire body first because we need it for both signature
 	// verification and JSON decoding
@@ -159,65 +159,65 @@ func (c *Client) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// Store sender information in database for user mapping and group membership tracking
 	// This enables features like ghost user puppeting and group chat management
 	if c.db != nil && payload.Sender.ID != "" && payload.Sender.Name != "" {
-        if err := c.db.UpsertViberUser(r.Context(), payload.Sender.ID, payload.Sender.Name); err != nil {
-            // Log error but don't fail webhook - best-effort persistence
-            logger.WarnWithContext(r.Context(), "failed to upsert Viber user",
-                "error", err,
-                "viber_user_id", payload.Sender.ID,
-                "viber_user_name", payload.Sender.Name,
-            )
-        }
-        if payload.Message.ChatID != "" {
-            if err := c.db.UpsertGroupMember(r.Context(), payload.Message.ChatID, payload.Sender.ID); err != nil {
-                // Log error but don't fail webhook - best-effort persistence
-                logger.WarnWithContext(r.Context(), "failed to upsert group member",
-                    "error", err,
-                    "chat_id", payload.Message.ChatID,
-                    "user_id", payload.Sender.ID,
-                )
-            }
-        }
-    }
+		if err := c.db.UpsertViberUser(r.Context(), payload.Sender.ID, payload.Sender.Name); err != nil {
+			// Log error but don't fail webhook - best-effort persistence
+			logger.WarnWithContext(r.Context(), "failed to upsert Viber user",
+				"error", err,
+				"viber_user_id", payload.Sender.ID,
+				"viber_user_name", payload.Sender.Name,
+			)
+		}
+		if payload.Message.ChatID != "" {
+			if err := c.db.UpsertGroupMember(r.Context(), payload.Message.ChatID, payload.Sender.ID); err != nil {
+				// Log error but don't fail webhook - best-effort persistence
+				logger.WarnWithContext(r.Context(), "failed to upsert group member",
+					"error", err,
+					"chat_id", payload.Message.ChatID,
+					"user_id", payload.Sender.ID,
+				)
+			}
+		}
+	}
 
-    // Picture message -> download media and forward as image
-    if payload.Event == EventMessage && (payload.Message.Type == "picture" || strings.HasSuffix(strings.ToLower(payload.Message.Media), ".jpg") || strings.HasSuffix(strings.ToLower(payload.Message.Media), ".png")) && c.matrix != nil {
-        if payload.Message.Media != "" {
-            // Download media using request context for cancellation support
-            req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, payload.Message.Media, nil)
-            if err == nil {
-                resp, err := c.httpClient.Do(req)
-                if err == nil && resp.StatusCode == http.StatusOK {
-                    data, err := io.ReadAll(resp.Body)
-                    resp.Body.Close()
-                    if err != nil {
-                        // Log error but don't fail webhook - best-effort image forwarding
-                        logger.WarnWithContext(r.Context(), "failed to read image data from media URL",
-                            "error", err,
-                            "media_url", payload.Message.Media,
-                            "event", payload.Event,
-                        )
-                    } else {
-                        filename := payload.Message.FileName
-                        if filename == "" {
-                            filename = "viber-image"
-                        }
-                        // best-effort content-type
-                        mimeType := resp.Header.Get("Content-Type")
-                        if err := c.matrix.SendImage(r.Context(), filename, mimeType, data, nil); err != nil {
-                            // Log error but don't fail webhook - best-effort forwarding
-                            logger.WarnWithContext(r.Context(), "failed to forward image to Matrix",
-                                "error", err,
-                                "filename", filename,
-                                "sender", payload.Sender.Name,
-                            )
-                        } else {
-                            metricForwardedMessages.WithLabelValues("image").Inc()
-                        }
-                    }
-                }
-            }
-        }
-    }
+	// Picture message -> download media and forward as image
+	if payload.Event == EventMessage && (payload.Message.Type == "picture" || strings.HasSuffix(strings.ToLower(payload.Message.Media), ".jpg") || strings.HasSuffix(strings.ToLower(payload.Message.Media), ".png")) && c.matrix != nil {
+		if payload.Message.Media != "" {
+			// Download media using request context for cancellation support
+			req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, payload.Message.Media, nil)
+			if err == nil {
+				resp, err := c.httpClient.Do(req)
+				if err == nil && resp.StatusCode == http.StatusOK {
+					data, err := io.ReadAll(resp.Body)
+					resp.Body.Close()
+					if err != nil {
+						// Log error but don't fail webhook - best-effort image forwarding
+						logger.WarnWithContext(r.Context(), "failed to read image data from media URL",
+							"error", err,
+							"media_url", payload.Message.Media,
+							"event", payload.Event,
+						)
+					} else {
+						filename := payload.Message.FileName
+						if filename == "" {
+							filename = "viber-image"
+						}
+						// best-effort content-type
+						mimeType := resp.Header.Get("Content-Type")
+						if err := c.matrix.SendImage(r.Context(), filename, mimeType, data, nil); err != nil {
+							// Log error but don't fail webhook - best-effort forwarding
+							logger.WarnWithContext(r.Context(), "failed to forward image to Matrix",
+								"error", err,
+								"filename", filename,
+								"sender", payload.Sender.Name,
+							)
+						} else {
+							metricForwardedMessages.WithLabelValues("image").Inc()
+						}
+					}
+				}
+			}
+		}
+	}
 
-    w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }

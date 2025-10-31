@@ -15,6 +15,7 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 var (
@@ -27,11 +28,11 @@ var (
 // For other backends: Use any OTLP-compatible endpoint
 func InitTracing(serviceName, otlpEndpoint string) (func(), error) {
 	if otlpEndpoint == "" {
-		// No tracing configured
-		tracer = trace.NewNoopTracerProvider().Tracer("noop")
+		// No tracing configured - use noop tracer provider
+		tracer = noop.NewTracerProvider().Tracer("noop")
 		return func() {}, nil
 	}
-	
+
 	// Create OTLP HTTP exporter (works with Jaeger 1.35+, Zipkin, and other OTLP backends)
 	exp, err := otlptracehttp.New(context.Background(),
 		otlptracehttp.WithEndpoint(otlpEndpoint),
@@ -40,7 +41,7 @@ func InitTracing(serviceName, otlpEndpoint string) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("create OTLP exporter: %w", err)
 	}
-	
+
 	// Create resource
 	res, err := resource.New(context.Background(),
 		resource.WithAttributes(
@@ -50,21 +51,21 @@ func InitTracing(serviceName, otlpEndpoint string) (func(), error) {
 	if err != nil {
 		return nil, fmt.Errorf("create resource: %w", err)
 	}
-	
+
 	// Create tracer provider with OTLP exporter
 	tp := tracesdk.NewTracerProvider(
 		tracesdk.WithBatcher(exp),
 		tracesdk.WithResource(res),
 	)
-	
+
 	otel.SetTracerProvider(tp)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		propagation.TraceContext{},
 		propagation.Baggage{},
 	))
-	
+
 	tracer = otel.Tracer(serviceName)
-	
+
 	// Return shutdown function
 	return func() {
 		if err := tp.Shutdown(context.Background()); err != nil {
@@ -103,4 +104,3 @@ func RecordError(span trace.Span, err error) {
 func SpanFromContext(ctx context.Context) trace.Span {
 	return trace.SpanFromContext(ctx)
 }
-

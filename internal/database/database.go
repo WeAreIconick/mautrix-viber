@@ -44,17 +44,17 @@ func OpenWithCache(path string, cache CacheInterface) (*DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}
-	
+
 	// Configure connection pool for production
-	db.SetMaxOpenConns(25)           // SQLite default is usually unlimited, but we limit for safety
-	db.SetMaxIdleConns(5)            // Keep some connections ready
+	db.SetMaxOpenConns(25)                  // SQLite default is usually unlimited, but we limit for safety
+	db.SetMaxIdleConns(5)                   // Keep some connections ready
 	db.SetConnMaxLifetime(5 * time.Minute)  // Refresh connections periodically
 	db.SetConnMaxIdleTime(10 * time.Minute) // Close idle connections
-	
+
 	// Retry database ping with exponential backoff (useful for network databases or startup delays)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	var pingErr error
 	for attempt := 0; attempt < 3; attempt++ {
 		if attempt > 0 {
@@ -67,16 +67,16 @@ func OpenWithCache(path string, cache CacheInterface) (*DB, error) {
 			case <-time.After(delay):
 			}
 		}
-		
+
 		pingCtx, pingCancel := context.WithTimeout(ctx, 5*time.Second)
 		pingErr = db.PingContext(pingCtx)
 		pingCancel()
-		
+
 		if pingErr == nil {
 			break
 		}
 	}
-	
+
 	if pingErr != nil {
 		db.Close()
 		return nil, fmt.Errorf("ping database after retries: %w", pingErr)
@@ -100,11 +100,11 @@ func (d *DB) Ping(ctx context.Context) error {
 
 // ViberUser represents a Viber user in the database.
 type ViberUser struct {
-	ViberID     string
-	ViberName   string
+	ViberID      string
+	ViberName    string
 	MatrixUserID *string
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // migrate creates all necessary database tables if they don't exist.
@@ -148,7 +148,7 @@ func (d *DB) migrate() error {
 	CREATE INDEX IF NOT EXISTS idx_message_mappings_viber ON message_mappings(viber_message_id);
 	CREATE INDEX IF NOT EXISTS idx_message_mappings_matrix ON message_mappings(matrix_event_id);
 	`
-	
+
 	if _, err := d.db.Exec(schema); err != nil {
 		return fmt.Errorf("execute migration: %w", err)
 	}
@@ -175,13 +175,13 @@ func (d *DB) UpsertViberUser(ctx context.Context, viberID, viberName string) err
 	if err != nil {
 		return fmt.Errorf("upsert viber user %s: %w", viberID, err)
 	}
-	
+
 	// Invalidate cache if configured
 	if d.cache != nil {
 		key := "user:viber:" + viberID
 		_ = d.cache.Delete(ctx, key) // Best-effort cache invalidation, ignore errors
 	}
-	
+
 	return nil
 }
 
@@ -193,7 +193,7 @@ func (d *DB) GetViberUser(ctx context.Context, viberID string) (*ViberUser, erro
 	if viberID == "" {
 		return nil, fmt.Errorf("%w: viber_id cannot be empty", ErrInvalidInput)
 	}
-	
+
 	// Try cache first if configured
 	if d.cache != nil {
 		var user ViberUser
@@ -202,7 +202,7 @@ func (d *DB) GetViberUser(ctx context.Context, viberID string) (*ViberUser, erro
 			return &user, nil
 		}
 	}
-	
+
 	var user ViberUser
 	var matrixUserID sql.NullString
 	err := d.db.QueryRowContext(ctx, `
@@ -210,24 +210,24 @@ func (d *DB) GetViberUser(ctx context.Context, viberID string) (*ViberUser, erro
 		FROM viber_users
 		WHERE viber_id = ?
 	`, viberID).Scan(&user.ViberID, &user.ViberName, &matrixUserID, &user.CreatedAt, &user.UpdatedAt)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("%w: viber user %s", ErrNotFound, viberID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query viber user %s: %w", viberID, err)
 	}
-	
+
 	if matrixUserID.Valid {
 		user.MatrixUserID = &matrixUserID.String
 	}
-	
+
 	// Cache the result if cache is configured
 	if d.cache != nil {
 		key := "user:viber:" + viberID
 		_ = d.cache.SetJSON(ctx, key, &user) // Best-effort cache, ignore errors
 	}
-	
+
 	return &user, nil
 }
 
@@ -249,13 +249,13 @@ func (d *DB) LinkViberUser(ctx context.Context, viberID, matrixUserID string) er
 	if err != nil {
 		return fmt.Errorf("link viber user %s to matrix user %s: %w", viberID, matrixUserID, err)
 	}
-	
+
 	// Invalidate cache if configured
 	if d.cache != nil {
 		key := "user:viber:" + viberID
 		_ = d.cache.Delete(ctx, key) // Best-effort cache invalidation
 	}
-	
+
 	return nil
 }
 
@@ -290,14 +290,14 @@ func (d *DB) GetViberUserByMatrixID(ctx context.Context, matrixUserID string) (*
 		FROM viber_users
 		WHERE matrix_user_id = ?
 	`, matrixUserID).Scan(&user.ViberID, &user.ViberName, &matrixUserIDNullable, &user.CreatedAt, &user.UpdatedAt)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("%w: no viber user linked to matrix user %s", ErrNotFound, matrixUserID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("query viber user by matrix id %s: %w", matrixUserID, err)
 	}
-	
+
 	if matrixUserIDNullable.Valid {
 		user.MatrixUserID = &matrixUserIDNullable.String
 	}
@@ -317,7 +317,7 @@ func (d *DB) ListLinkedUsers(ctx context.Context) ([]*ViberUser, error) {
 		return nil, fmt.Errorf("query linked users: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var users []*ViberUser
 	for rows.Next() {
 		var user ViberUser
@@ -355,7 +355,7 @@ func (d *DB) CreateRoomMapping(ctx context.Context, viberChatID, matrixRoomID st
 	if err != nil {
 		return fmt.Errorf("create room mapping for chat %s -> room %s: %w", viberChatID, matrixRoomID, err)
 	}
-	
+
 	// Invalidate cache if configured
 	if d.cache != nil {
 		key1 := "room:viber:" + viberChatID
@@ -363,7 +363,7 @@ func (d *DB) CreateRoomMapping(ctx context.Context, viberChatID, matrixRoomID st
 		_ = d.cache.Delete(ctx, key1) // Best-effort cache invalidation
 		_ = d.cache.Delete(ctx, key2)
 	}
-	
+
 	return nil
 }
 
@@ -375,7 +375,7 @@ func (d *DB) GetMatrixRoomID(ctx context.Context, viberChatID string) (string, e
 	if viberChatID == "" {
 		return "", fmt.Errorf("%w: viber_chat_id cannot be empty", ErrInvalidInput)
 	}
-	
+
 	// Try cache first if configured
 	if d.cache != nil {
 		var cachedRoomID string
@@ -384,7 +384,7 @@ func (d *DB) GetMatrixRoomID(ctx context.Context, viberChatID string) (string, e
 			return cachedRoomID, nil
 		}
 	}
-	
+
 	var matrixRoomID string
 	err := d.db.QueryRowContext(ctx, `
 		SELECT matrix_room_id
@@ -397,13 +397,13 @@ func (d *DB) GetMatrixRoomID(ctx context.Context, viberChatID string) (string, e
 	if err != nil {
 		return "", fmt.Errorf("query matrix room id for chat %s: %w", viberChatID, err)
 	}
-	
+
 	// Cache the result if cache is configured
 	if d.cache != nil && matrixRoomID != "" {
 		key := "room:viber:" + viberChatID
 		_ = d.cache.SetJSON(ctx, key, matrixRoomID) // Best-effort cache, ignore errors
 	}
-	
+
 	return matrixRoomID, nil
 }
 
@@ -415,7 +415,7 @@ func (d *DB) GetViberChatID(ctx context.Context, matrixRoomID string) (string, e
 	if matrixRoomID == "" {
 		return "", fmt.Errorf("%w: matrix_room_id cannot be empty", ErrInvalidInput)
 	}
-	
+
 	// Try cache first if configured
 	if d.cache != nil {
 		var cachedChatID string
@@ -424,7 +424,7 @@ func (d *DB) GetViberChatID(ctx context.Context, matrixRoomID string) (string, e
 			return cachedChatID, nil
 		}
 	}
-	
+
 	var viberChatID string
 	err := d.db.QueryRowContext(ctx, `
 		SELECT viber_chat_id
@@ -437,13 +437,13 @@ func (d *DB) GetViberChatID(ctx context.Context, matrixRoomID string) (string, e
 	if err != nil {
 		return "", fmt.Errorf("query viber chat id for room %s: %w", matrixRoomID, err)
 	}
-	
+
 	// Cache the result if cache is configured
 	if d.cache != nil && viberChatID != "" {
 		key := "room:matrix:" + matrixRoomID
 		_ = d.cache.SetJSON(ctx, key, viberChatID) // Best-effort cache, ignore errors
 	}
-	
+
 	return viberChatID, nil
 }
 
@@ -459,7 +459,7 @@ func (d *DB) ListRoomMappings(ctx context.Context) ([]RoomMapping, error) {
 		return nil, fmt.Errorf("query room mappings: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var mappings []RoomMapping
 	for rows.Next() {
 		var m RoomMapping
@@ -567,7 +567,7 @@ func (d *DB) ListGroupMembers(ctx context.Context, viberChatID string) ([]string
 		return nil, fmt.Errorf("query group members for chat %s: %w", viberChatID, err)
 	}
 	defer rows.Close()
-	
+
 	var members []string
 	for rows.Next() {
 		var userID string

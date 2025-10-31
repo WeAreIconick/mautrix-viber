@@ -17,7 +17,7 @@ func TestValidateMatrixUserID(t *testing.T) {
 		{"missing domain", "@alice", true},
 		{"empty", "", true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateMatrixUserID(tt.userID)
@@ -39,7 +39,7 @@ func TestValidateMatrixRoomID(t *testing.T) {
 		{"missing !", "room123:matrix.example.com", true},
 		{"empty", "", true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateMatrixRoomID(tt.roomID)
@@ -63,7 +63,7 @@ func TestValidateURL(t *testing.T) {
 		{"no host", "https://", true},
 		{"empty", "", true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateURL(tt.url)
@@ -84,7 +84,7 @@ func TestValidateHTTPS(t *testing.T) {
 		{"http not allowed", "http://example.com", true},
 		{"invalid", "not-a-url", true},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := ValidateHTTPS(tt.url)
@@ -106,7 +106,7 @@ func TestSanitizeInput(t *testing.T) {
 		{"with quotes", "test'\"text", "testtext"},
 		{"with semicolon", "test;DROP TABLE", "testDROP TABLE"},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := SanitizeInput(tt.input)
@@ -116,4 +116,3 @@ func TestSanitizeInput(t *testing.T) {
 		})
 	}
 }
-

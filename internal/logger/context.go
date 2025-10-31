@@ -56,4 +56,3 @@ func DebugWithContext(ctx context.Context, msg string, args ...any) {
 	}
 	Default.Debug(msg, attrs...)
 }
-

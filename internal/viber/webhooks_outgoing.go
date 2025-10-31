@@ -50,7 +50,7 @@ func (owm *OutgoingWebhookManager) SendWebhook(ctx context.Context, eventType st
 		if !webhook.Enabled {
 			continue
 		}
-		
+
 		// Check if this webhook should receive this event type
 		shouldSend := false
 		for _, evt := range webhook.Events {
@@ -59,11 +59,11 @@ func (owm *OutgoingWebhookManager) SendWebhook(ctx context.Context, eventType st
 				break
 			}
 		}
-		
+
 		if !shouldSend {
 			continue
 		}
-		
+
 		// Send webhook
 		if err := owm.sendWebhook(ctx, webhook, eventType, payload); err != nil {
 			// Log error but continue with other webhooks
@@ -71,7 +71,7 @@ func (owm *OutgoingWebhookManager) SendWebhook(ctx context.Context, eventType st
 			// For now, errors are returned but not logged at this level
 		}
 	}
-	
+
 	return nil
 }
 
@@ -88,32 +88,31 @@ func (owm *OutgoingWebhookManager) sendWebhook(ctx context.Context, webhook Outg
 	if err != nil {
 		return fmt.Errorf("marshal payload: %w", err)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, webhook.URL, bytes.NewReader(data))
 	if err != nil {
 		return fmt.Errorf("create request: %w", err)
 	}
-	
+
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Webhook-Event", eventType)
-	
+
 	// Add signature if secret is configured
 	if webhook.Secret != "" {
 		// Calculate HMAC-SHA256 signature of payload body
 		signature := calculateHMACSignature(data, webhook.Secret)
 		req.Header.Set("X-Webhook-Signature", signature)
 	}
-	
+
 	resp, err := owm.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("unexpected status: %d", resp.StatusCode)
 	}
-	
+
 	return nil
 }
-

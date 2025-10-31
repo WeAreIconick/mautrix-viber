@@ -9,29 +9,29 @@ import (
 
 // BridgeInfo represents bridge status and statistics.
 type BridgeInfo struct {
-	Version     string    `json:"version"`
-	Status      string    `json:"status"`
-	Uptime      string    `json:"uptime"`
-	StartedAt   time.Time `json:"started_at"`
-	Matrix      ServiceStatus `json:"matrix"`
-	Viber       ServiceStatus `json:"viber"`
-	Statistics  Statistics    `json:"statistics"`
+	Version    string        `json:"version"`
+	Status     string        `json:"status"`
+	Uptime     string        `json:"uptime"`
+	StartedAt  time.Time     `json:"started_at"`
+	Matrix     ServiceStatus `json:"matrix"`
+	Viber      ServiceStatus `json:"viber"`
+	Statistics Statistics    `json:"statistics"`
 }
 
 // ServiceStatus represents the status of a service (Matrix or Viber).
 type ServiceStatus struct {
 	Connected bool   `json:"connected"`
-	Status     string `json:"status"`
+	Status    string `json:"status"`
 	Error     string `json:"error,omitempty"`
 }
 
 // Statistics represents bridge statistics.
 type Statistics struct {
-	MessagesBridged   int64 `json:"messages_bridged"`
-	UsersLinked       int64 `json:"users_linked"`
-	RoomsMapped       int64 `json:"rooms_mapped"`
-	WebhookRequests   int64 `json:"webhook_requests"`
-	Errors            int64 `json:"errors"`
+	MessagesBridged int64 `json:"messages_bridged"`
+	UsersLinked     int64 `json:"users_linked"`
+	RoomsMapped     int64 `json:"rooms_mapped"`
+	WebhookRequests int64 `json:"webhook_requests"`
+	Errors          int64 `json:"errors"`
 }
 
 var (
@@ -76,10 +76,10 @@ func UpdateStatistics(stats Statistics) {
 // InfoHandler returns bridge information and status.
 func InfoHandler(w http.ResponseWriter, r *http.Request) {
 	bridgeInfo.Uptime = time.Since(startTime).String()
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(bridgeInfo)
+	_ = json.NewEncoder(w).Encode(bridgeInfo)
 }
 
 // HealthHandler returns health check status.
@@ -90,4 +90,3 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 }
-

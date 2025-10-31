@@ -15,7 +15,7 @@ func Version() string {
 
 // BuildInfo contains build information.
 var BuildInfo struct {
-	Version string
+	Version   string
 	GitCommit string
 	BuildDate string
 }
@@ -24,4 +24,3 @@ func init() {
 	BuildInfo.Version = Version()
 	// GitCommit and BuildDate would be set at build time via ldflags
 }
-

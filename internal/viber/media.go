@@ -144,4 +144,3 @@ func (c *Client) forwardContact(ctx context.Context, contactData string) error {
 	text := fmt.Sprintf("[Contact] %s", contactData)
 	return c.matrix.SendText(ctx, text)
 }
-

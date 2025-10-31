@@ -33,12 +33,12 @@ func (em *EncryptionManager) EnableEncryption(ctx context.Context, roomID id.Roo
 	if em.mxClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Send encryption event to room (basic support without OLM)
 	content := map[string]interface{}{
 		"algorithm": "m.megolm.v1.aes-sha2",
 	}
-	
+
 	_, err := em.mxClient.SendStateEvent(ctx, roomID, event.StateEncryption, "", content)
 	return err
 }
@@ -48,13 +48,13 @@ func (em *EncryptionManager) IsEncrypted(ctx context.Context, roomID id.RoomID) 
 	if em.mxClient == nil {
 		return false, fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Query room encryption state using FullStateEvent
 	state, err := em.mxClient.FullStateEvent(ctx, roomID, event.StateEncryption, "")
 	if err != nil {
 		return false, err
 	}
-	
+
 	return state != nil, nil
 }
 
@@ -64,7 +64,7 @@ func (em *EncryptionManager) SendEncryptedMessage(ctx context.Context, roomID id
 	if em.mxClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// The mautrix client will encrypt automatically if the room has encryption enabled
 	// This works without OLM for basic Megolm support
 	_, err := em.mxClient.SendMessageEvent(ctx, roomID, event.EventMessage, content)

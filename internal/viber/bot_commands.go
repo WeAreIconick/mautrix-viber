@@ -42,14 +42,14 @@ func (bcm *BotCommandManager) ParseCommand(text string) *BotCommand {
 	if !strings.HasPrefix(text, bcm.prefix) {
 		return nil
 	}
-	
+
 	// Remove prefix and split
 	text = strings.TrimPrefix(text, bcm.prefix)
 	parts := strings.Fields(text)
 	if len(parts) == 0 {
 		return nil
 	}
-	
+
 	return &BotCommand{
 		Command: strings.ToLower(parts[0]),
 		Args:    parts[1:],
@@ -62,7 +62,7 @@ func (bcm *BotCommandManager) HandleCommand(ctx context.Context, cmd BotCommand)
 	if !ok {
 		return "", fmt.Errorf("unknown command: %s", cmd.Command)
 	}
-	
+
 	return handler(ctx, cmd)
 }
 
@@ -72,15 +72,15 @@ func (bcm *BotCommandManager) HandleMessage(ctx context.Context, text, senderID,
 	if cmd == nil {
 		return false, "", nil
 	}
-	
+
 	cmd.Sender = senderID
 	cmd.ChatID = chatID
-	
+
 	response, err := bcm.HandleCommand(ctx, *cmd)
 	if err != nil {
 		return true, "", err
 	}
-	
+
 	return true, response, nil
 }
 
@@ -94,15 +94,14 @@ func (bcm *BotCommandManager) RegisterDefaultCommands() {
 		}
 		return fmt.Sprintf("Available commands: %s", strings.Join(commands, ", ")), nil
 	})
-	
+
 	// Status command
 	bcm.RegisterCommand("status", func(ctx context.Context, cmd BotCommand) (string, error) {
 		return "Bridge is running", nil
 	})
-	
+
 	// Ping command
 	bcm.RegisterCommand("ping", func(ctx context.Context, cmd BotCommand) (string, error) {
 		return "pong", nil
 	})
 }
-

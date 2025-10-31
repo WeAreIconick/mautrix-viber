@@ -13,7 +13,7 @@ func ExampleValidateMatrixUserID() {
 	} else {
 		fmt.Println("Valid user ID")
 	}
-	
+
 	// Invalid Matrix user ID (missing @)
 	err = utils.ValidateMatrixUserID("alice:matrix.org")
 	if err != nil {
@@ -32,7 +32,7 @@ func ExampleValidateMatrixRoomID() {
 	} else {
 		fmt.Println("Valid room ID")
 	}
-	
+
 	// Invalid Matrix room ID (missing !)
 	err = utils.ValidateMatrixRoomID("#abc123:matrix.org")
 	if err != nil {
@@ -51,7 +51,7 @@ func ExampleValidateURL() {
 	} else {
 		fmt.Println("Valid URL")
 	}
-	
+
 	// Invalid URL (no scheme)
 	err = utils.ValidateURL("example.com")
 	if err != nil {
@@ -61,4 +61,3 @@ func ExampleValidateURL() {
 	// Valid URL
 	// Error: URL must use http or https scheme
 }
-

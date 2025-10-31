@@ -11,10 +11,10 @@ import (
 
 // FileUploadProgress represents upload progress information.
 type FileUploadProgress struct {
-	BytesUploaded int64
-	TotalBytes    int64
+	BytesUploaded   int64
+	TotalBytes      int64
 	PercentComplete float64
-	Status        string // "downloading", "uploading", "complete", "error"
+	Status          string // "downloading", "uploading", "complete", "error"
 }
 
 // UploadFile downloads a file from Viber and uploads it to Matrix with progress tracking.
@@ -22,14 +22,14 @@ func (c *Client) UploadFile(ctx context.Context, fileURL, filename, mimeType str
 	if c.matrix == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	defer close(progressChan)
-	
+
 	// Step 1: Download from Viber
 	if progressChan != nil {
 		progressChan <- FileUploadProgress{Status: "downloading"}
 	}
-	
+
 	resp, err := c.httpClient.Get(fileURL)
 	if err != nil {
 		if progressChan != nil {
@@ -38,14 +38,14 @@ func (c *Client) UploadFile(ctx context.Context, fileURL, filename, mimeType str
 		return fmt.Errorf("download file: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		if progressChan != nil {
 			progressChan <- FileUploadProgress{Status: "error"}
 		}
 		return fmt.Errorf("download failed: status %d", resp.StatusCode)
 	}
-	
+
 	totalBytes := resp.ContentLength
 	if mimeType == "" {
 		mimeType = resp.Header.Get("Content-Type")
@@ -53,7 +53,7 @@ func (c *Client) UploadFile(ctx context.Context, fileURL, filename, mimeType str
 			mimeType = "application/octet-stream"
 		}
 	}
-	
+
 	// Read file data
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -62,16 +62,16 @@ func (c *Client) UploadFile(ctx context.Context, fileURL, filename, mimeType str
 		}
 		return fmt.Errorf("read file data: %w", err)
 	}
-	
+
 	if progressChan != nil {
 		progressChan <- FileUploadProgress{
-			BytesUploaded: int64(len(data)),
-			TotalBytes:    totalBytes,
+			BytesUploaded:   int64(len(data)),
+			TotalBytes:      totalBytes,
 			PercentComplete: 50.0,
-			Status:        "uploading",
+			Status:          "uploading",
 		}
 	}
-	
+
 	// Step 2: Upload to Matrix
 	if err := c.matrix.SendImage(ctx, filename, mimeType, data, nil); err != nil {
 		if progressChan != nil {
@@ -79,16 +79,16 @@ func (c *Client) UploadFile(ctx context.Context, fileURL, filename, mimeType str
 		}
 		return fmt.Errorf("upload to matrix: %w", err)
 	}
-	
+
 	if progressChan != nil {
 		progressChan <- FileUploadProgress{
-			BytesUploaded:  int64(len(data)),
-			TotalBytes:     totalBytes,
+			BytesUploaded:   int64(len(data)),
+			TotalBytes:      totalBytes,
 			PercentComplete: 100.0,
-			Status:         "complete",
+			Status:          "complete",
 		}
 	}
-	
+
 	return nil
 }
 
@@ -105,15 +105,14 @@ func (c *Client) UploadFileWithRetry(ctx context.Context, fileURL, filename, mim
 			case <-time.After(delay):
 			}
 		}
-		
+
 		if err := c.UploadFile(ctx, fileURL, filename, mimeType, nil); err != nil {
 			lastErr = err
 			continue
 		}
-		
+
 		return nil
 	}
-	
+
 	return fmt.Errorf("max retries (%d) exceeded: %w", maxRetries, lastErr)
 }
-

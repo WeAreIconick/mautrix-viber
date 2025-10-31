@@ -11,7 +11,7 @@ import (
 
 // Config configures retry behavior.
 type Config struct {
-	MaxAttempts int           // Maximum number of retry attempts
+	MaxAttempts  int           // Maximum number of retry attempts
 	InitialDelay time.Duration // Initial delay before first retry
 	MaxDelay     time.Duration // Maximum delay between retries
 	Multiplier   float64       // Exponential backoff multiplier
@@ -21,7 +21,7 @@ type Config struct {
 // DefaultConfig returns a default retry configuration.
 func DefaultConfig() Config {
 	return Config{
-		MaxAttempts: 3,
+		MaxAttempts:  3,
 		InitialDelay: 100 * time.Millisecond,
 		MaxDelay:     5 * time.Second,
 		Multiplier:   2.0,
@@ -32,7 +32,7 @@ func DefaultConfig() Config {
 // Do executes a function with retry logic. Returns the last error if all attempts fail.
 func Do(ctx context.Context, cfg Config, fn func() error) error {
 	var lastErr error
-	
+
 	for attempt := 0; attempt < cfg.MaxAttempts; attempt++ {
 		if attempt > 0 {
 			// Calculate delay with exponential backoff
@@ -45,22 +45,22 @@ func Do(ctx context.Context, cfg Config, fn func() error) error {
 				jitter := time.Duration(float64(delay) * 0.25 * (rand.Float64()*2 - 1))
 				delay += jitter
 			}
-			
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			case <-time.After(delay):
 			}
 		}
-		
+
 		if err := fn(); err != nil {
 			lastErr = err
 			continue
 		}
-		
+
 		return nil
 	}
-	
+
 	return fmt.Errorf("max attempts (%d) exceeded: %w", cfg.MaxAttempts, lastErr)
 }
 
@@ -85,4 +85,3 @@ func IsRetryable(err error) bool {
 	// - Rate limits: check if err contains 429 status code
 	return true
 }
-

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"maunium.net/go/mautrix/id"
-	
+
 	"github.com/example/mautrix-viber/internal/database"
 	mx "github.com/example/mautrix-viber/internal/matrix"
 )
@@ -37,12 +37,12 @@ func (plm *PowerLevelManager) SyncPowerLevels(ctx context.Context, viberChatID s
 	if plm.db == nil {
 		return fmt.Errorf("database not configured")
 	}
-	
+
 	matrixRoomID, err := plm.db.GetMatrixRoomID(ctx, viberChatID)
 	if err != nil || matrixRoomID == "" {
 		return fmt.Errorf("matrix room id not found for chat %s", viberChatID)
 	}
-	
+
 	// Set admin power level (50 in Matrix)
 	for _, viberUserID := range admins {
 		ghostID := id.UserID(fmt.Sprintf("@viber_%s:example.com", viberUserID))
@@ -50,7 +50,7 @@ func (plm *PowerLevelManager) SyncPowerLevels(ctx context.Context, viberChatID s
 			return fmt.Errorf("set admin power level: %w", err)
 		}
 	}
-	
+
 	// Set moderator power level (50 in Matrix, or separate if needed)
 	for _, viberUserID := range moderators {
 		ghostID := id.UserID(fmt.Sprintf("@viber_%s:example.com", viberUserID))
@@ -58,7 +58,7 @@ func (plm *PowerLevelManager) SyncPowerLevels(ctx context.Context, viberChatID s
 			return fmt.Errorf("set moderator power level: %w", err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -68,7 +68,7 @@ func (plm *PowerLevelManager) setUserPowerLevel(ctx context.Context, roomID id.R
 	if plm.matrixClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Power level setting requires Matrix client to implement SetPowerLevel
 	// This would use PUT /_matrix/client/r0/rooms/{roomId}/state/m.room.power_levels
 	// Requires the mautrix client to expose power level modification methods
@@ -85,7 +85,7 @@ func (plm *PowerLevelManager) GetPowerLevel(ctx context.Context, roomID id.RoomI
 	if plm.matrixClient == nil {
 		return 0, fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Power level retrieval requires querying Matrix room state:
 	// GET /_matrix/client/r0/rooms/{roomId}/state/m.room.power_levels
 	// Requires the mautrix client to expose room state query methods
@@ -101,8 +101,7 @@ func (plm *PowerLevelManager) IsAdmin(ctx context.Context, roomID id.RoomID, use
 	if err != nil {
 		return false, err
 	}
-	
+
 	// Admin power level is typically 50 or higher
 	return level >= 50, nil
 }
-

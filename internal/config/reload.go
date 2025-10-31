@@ -21,10 +21,10 @@ func NewReloadableConfig(initial Config, reloadFn func() (Config, error)) *Reloa
 		config: initial,
 		reload: reloadFn,
 	}
-	
+
 	// Listen for SIGHUP
 	go rc.listenForReload()
-	
+
 	return rc
 }
 
@@ -40,16 +40,16 @@ func (rc *ReloadableConfig) Reload() error {
 	if rc.reload == nil {
 		return nil
 	}
-	
+
 	newConfig, err := rc.reload()
 	if err != nil {
 		return err
 	}
-	
+
 	rc.mu.Lock()
 	rc.config = newConfig
 	rc.mu.Unlock()
-	
+
 	return nil
 }
 
@@ -57,7 +57,7 @@ func (rc *ReloadableConfig) Reload() error {
 func (rc *ReloadableConfig) listenForReload() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGHUP)
-	
+
 	for range sigChan {
 		if err := rc.Reload(); err != nil {
 			// Log error - in production use structured logging
@@ -68,4 +68,3 @@ func (rc *ReloadableConfig) listenForReload() {
 		}
 	}
 }
-

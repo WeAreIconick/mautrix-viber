@@ -65,10 +65,10 @@ func (h *AdminHandler) ServeAdminPanel(w http.ResponseWriter, r *http.Request) {
 	</script>
 </body>
 </html>`
-	
+
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(html))
+	_, _ = w.Write([]byte(html))
 }
 
 // HandleAPI handles admin API requests.
@@ -77,4 +77,3 @@ func (h *AdminHandler) HandleAPI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	api.InfoHandler(w, r)
 }
-

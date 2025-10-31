@@ -17,20 +17,20 @@ import (
 
 // SendMessageRequest represents a Viber send message API request.
 type SendMessageRequest struct {
-	Receiver      string            `json:"receiver"`
-	Type          string            `json:"type"`
-	Text          string            `json:"text,omitempty"`
-	Media         string            `json:"media,omitempty"`
-	Thumbnail     string            `json:"thumbnail,omitempty"`
-	Duration      int               `json:"duration,omitempty"`
-	Size          int64             `json:"size,omitempty"`
-	FileName      string            `json:"file_name,omitempty"`
-	Location      *Location         `json:"location,omitempty"`
-	Contact       *Contact          `json:"contact,omitempty"`
-	TrackingData  string            `json:"tracking_data,omitempty"`
-	Keyboard      *Keyboard         `json:"keyboard,omitempty"`
-	RichMedia     *RichMedia        `json:"rich_media,omitempty"`
-	MinAPIVersion int               `json:"min_api_version,omitempty"`
+	Receiver      string     `json:"receiver"`
+	Type          string     `json:"type"`
+	Text          string     `json:"text,omitempty"`
+	Media         string     `json:"media,omitempty"`
+	Thumbnail     string     `json:"thumbnail,omitempty"`
+	Duration      int        `json:"duration,omitempty"`
+	Size          int64      `json:"size,omitempty"`
+	FileName      string     `json:"file_name,omitempty"`
+	Location      *Location  `json:"location,omitempty"`
+	Contact       *Contact   `json:"contact,omitempty"`
+	TrackingData  string     `json:"tracking_data,omitempty"`
+	Keyboard      *Keyboard  `json:"keyboard,omitempty"`
+	RichMedia     *RichMedia `json:"rich_media,omitempty"`
+	MinAPIVersion int        `json:"min_api_version,omitempty"`
 }
 
 // Location represents a location for Viber location messages.
@@ -177,7 +177,7 @@ func (c *Client) SendMessage(ctx context.Context, req SendMessageRequest) (*Send
 		metrics.RecordError("viber_send_failure", "send")
 		return nil, fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -225,7 +225,7 @@ func (c *Client) GetUserDetails(ctx context.Context, userID string) (*UserDetail
 	if err != nil {
 		return nil, fmt.Errorf("send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var userResp struct {
 		Status int         `json:"status"`
@@ -245,11 +245,10 @@ func (c *Client) GetUserDetails(ctx context.Context, userID string) (*UserDetail
 
 // UserDetails represents user information from Viber API.
 type UserDetails struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Avatar      string `json:"avatar,omitempty"`
-	Language    string `json:"language,omitempty"`
-	Country     string `json:"country,omitempty"`
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Avatar     string `json:"avatar,omitempty"`
+	Language   string `json:"language,omitempty"`
+	Country    string `json:"country,omitempty"`
 	APIVersion int    `json:"api_version,omitempty"`
 }
-

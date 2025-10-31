@@ -82,4 +82,3 @@ func ValidateViberUserID(userID string) error {
 	}
 	return nil
 }
-

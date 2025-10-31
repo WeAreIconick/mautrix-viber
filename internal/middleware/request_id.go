@@ -18,14 +18,14 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 		if requestID == "" {
 			requestID = uuid.New().String()
 		}
-		
+
 		// Add to response header
 		w.Header().Set("X-Request-ID", requestID)
-		
+
 		// Add to context using the shared logger package's function
 		ctx := logger.WithRequestID(r.Context(), requestID)
 		r = r.WithContext(ctx)
-		
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -35,4 +35,3 @@ func RequestIDMiddleware(next http.Handler) http.Handler {
 func GetRequestID(ctx context.Context) string {
 	return logger.GetRequestID(ctx)
 }
-

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"maunium.net/go/mautrix/id"
-	
+
 	"github.com/example/mautrix-viber/internal/database"
 	mx "github.com/example/mautrix-viber/internal/matrix"
 )
@@ -30,23 +30,23 @@ func (tm *ThreadManager) HandleReply(ctx context.Context, roomID id.RoomID, repl
 	if tm.matrixClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	if tm.db == nil {
 		return fmt.Errorf("database not configured")
 	}
-	
+
 	// Get original Matrix event ID from database
 	originalEventID, err := tm.db.GetMatrixEventID(ctx, replyToViberMsgID)
 	if err != nil {
 		return fmt.Errorf("get original event id: %w", err)
 	}
-	
+
 	if originalEventID == "" {
 		// Original message not found, send as regular message
 		text := fmt.Sprintf("[Viber] %s: %s", senderName, replyText)
 		return tm.matrixClient.SendTextToRoom(ctx, roomID, text)
 	}
-	
+
 	// Send as reply (thread support requires matrix client enhancements)
 	// For now, prefix with "Re: " to indicate reply
 	text := fmt.Sprintf("Re: %s\n\n[Viber] %s: %s", originalEventID, senderName, replyText)
@@ -58,7 +58,7 @@ func (tm *ThreadManager) GetThreadRoot(ctx context.Context, eventID id.EventID) 
 	if tm.db == nil {
 		return "", fmt.Errorf("database not configured")
 	}
-	
+
 	// This would need thread tracking in database
 	// For now, return empty
 	return "", nil
@@ -74,4 +74,3 @@ func (tm *ThreadManager) ListThreadReplies(ctx context.Context, rootEventID id.E
 	_ = rootEventID
 	return nil, fmt.Errorf("thread reply listing requires Matrix client relation query methods")
 }
-

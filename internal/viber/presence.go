@@ -28,18 +28,18 @@ func (pm *PresenceManager) SyncPresenceFromViber(ctx context.Context, viberUserI
 	if pm.matrixClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
-	
+
 	// Generate ghost user ID
 	// Construct ghost user ID - domain should come from Matrix homeserver config
 	// For now, use a default pattern (in production, extract from homeserver URL)
 	ghostID := id.UserID(fmt.Sprintf("@viber_%s:example.com", viberUserID))
-	
+
 	// Set presence
 	presence := "offline"
 	if isOnline {
 		presence = "online"
 	}
-	
+
 	// Matrix presence API
 	// NOTE: SetPresence doesn't take userID parameter and only sets current user's presence
 	// This requires proper appservice puppeting configuration
@@ -75,4 +75,3 @@ func (pm *PresenceManager) GetViberPresence(ctx context.Context, viberUserID str
 func (pm *PresenceManager) HandlePresenceUpdate(ctx context.Context, viberUserID string, isOnline bool) error {
 	return pm.SyncPresenceFromViber(ctx, viberUserID, isOnline)
 }
-

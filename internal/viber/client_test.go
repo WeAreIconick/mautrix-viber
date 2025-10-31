@@ -19,29 +19,29 @@ import (
 func TestWebhookSignatureVerification(t *testing.T) {
 	token := "test-api-token"
 	payload := WebhookRequest{
-		Event: EventMessage,
-		Sender: Sender{ID: "123", Name: "Test"},
+		Event:   EventMessage,
+		Sender:  Sender{ID: "123", Name: "Test"},
 		Message: Message{Type: "text", Text: "Hello"},
 	}
-	
+
 	bodyBytes, _ := json.Marshal(payload)
-	
+
 	// Calculate signature
 	mac := hmac.New(sha256.New, []byte(token))
 	mac.Write(bodyBytes)
 	expectedSig := hex.EncodeToString(mac.Sum(nil))
-	
+
 	// Create client
 	client := NewClient(Config{APIToken: token}, nil, nil)
-	
+
 	// Create request with valid signature
 	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(bodyBytes))
 	req.Header.Set("X-Viber-Content-Signature", expectedSig)
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	client.WebhookHandler(w, req)
-	
+
 	// Should not return 401 (unauthorized)
 	if w.Code == http.StatusUnauthorized {
 		t.Error("Valid signature was rejected")
@@ -52,15 +52,15 @@ func TestWebhookSignatureVerification(t *testing.T) {
 func TestWebhookSignatureMismatch(t *testing.T) {
 	token := "test-api-token"
 	client := NewClient(Config{APIToken: token}, nil, nil)
-	
+
 	payload := `{"event":"message"}`
 	req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader([]byte(payload)))
 	req.Header.Set("X-Viber-Content-Signature", "invalid_signature")
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	w := httptest.NewRecorder()
 	client.WebhookHandler(w, req)
-	
+
 	// Should return 401 for invalid signature
 	if w.Code != http.StatusUnauthorized {
 		t.Errorf("Expected 401 for invalid signature, got %d", w.Code)
@@ -70,7 +70,7 @@ func TestWebhookSignatureMismatch(t *testing.T) {
 // TestSendMessage tests sending messages via Viber API.
 func TestSendMessage(t *testing.T) {
 	t.Skip("Requires mock HTTP server or Viber API access")
-	
+
 	// This would test:
 	// 1. Message formatting
 	// 2. API request construction
@@ -81,7 +81,7 @@ func TestSendMessage(t *testing.T) {
 // TestWebhookHandler_Integration tests webhook handler with full flow.
 func TestWebhookHandler_Integration(t *testing.T) {
 	t.Skip("Requires database and Matrix client setup")
-	
+
 	// This would test:
 	// 1. Receive webhook
 	// 2. Verify signature
@@ -97,26 +97,26 @@ func TestEnsureWebhook(t *testing.T) {
 		if r.URL.Path != "/pa/set_webhook" {
 			t.Errorf("Unexpected path: %s", r.URL.Path)
 		}
-		
+
 		var req map[string]interface{}
 		json.NewDecoder(r.Body).Decode(&req)
-		
+
 		response := map[string]interface{}{
-			"status":        0,
+			"status":         0,
 			"status_message": "ok",
 		}
 		json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
-	
+
 	_ = NewClient(Config{
 		APIToken:   "test-token",
 		WebhookURL: "https://example.com/webhook",
 	}, nil, nil)
-	
+
 	// Client created for testing
 	// Note: This would require making the endpoint configurable for actual testing
-	
+
 	// Test webhook registration
 	ctx := context.Background()
 	// err := client.EnsureWebhook()
@@ -130,9 +130,9 @@ func TestEnsureWebhook(t *testing.T) {
 func TestWebhookHandler_EventTypes(t *testing.T) {
 	db, _ := database.Open("/tmp/test_events.db")
 	defer db.Close()
-	
+
 	client := NewClient(Config{APIToken: "test"}, nil, db)
-	
+
 	testCases := []struct {
 		name    string
 		event   Event
@@ -144,7 +144,7 @@ func TestWebhookHandler_EventTypes(t *testing.T) {
 		{"subscribed event", EventSubscribed, Message{}, false},
 		{"unsubscribed event", EventUnsubscribed, Message{}, false},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			payload := WebhookRequest{
@@ -152,14 +152,14 @@ func TestWebhookHandler_EventTypes(t *testing.T) {
 				Sender:  Sender{ID: "123", Name: "Test"},
 				Message: tc.message,
 			}
-			
+
 			bodyBytes, _ := json.Marshal(payload)
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(bodyBytes))
 			req.Header.Set("Content-Type", "application/json")
-			
+
 			w := httptest.NewRecorder()
 			client.WebhookHandler(w, req)
-			
+
 			// Should not crash or return 500 for valid events
 			if w.Code == http.StatusInternalServerError {
 				t.Errorf("Handler returned 500 for valid event")

@@ -67,10 +67,10 @@ func TestWebhookHandler_SignatureVerification(t *testing.T) {
 	body := `{"event":"message","sender":{"id":"123","name":"Test"},"message":{"type":"text","text":"Hello"}}`
 	req := httptest.NewRequest(http.MethodPost, "/viber/webhook", bytes.NewReader([]byte(body)))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	// Calculate valid signature (simplified - actual implementation would use HMAC)
 	w := httptest.NewRecorder()
-	
+
 	// Note: This is a simplified test - full test would verify HMAC signature
 	client.WebhookHandler(w, req)
 
@@ -106,4 +106,3 @@ func TestRecoveryMiddleware(t *testing.T) {
 		t.Errorf("Expected status 500 after panic, got %d", w.Code)
 	}
 }
-
