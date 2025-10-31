@@ -22,7 +22,8 @@ linters-settings:
         severity: warning
 
 output:
-  format: colored-line-number
+  formats:
+    - format: colored-line-number
 
 issues:
   exclude-use-default: false

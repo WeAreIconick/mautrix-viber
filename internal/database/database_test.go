@@ -58,13 +58,13 @@ func TestUpsertViberUser(t *testing.T) {
 
 func TestRoomMapping(t *testing.T) {
 	dbPath := "/tmp/test_bridge_rooms.db"
-	defer os.Remove(dbPath)
+	defer func() { _ = os.Remove(dbPath) }()
 
 	db, err := Open(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -97,13 +97,13 @@ func TestRoomMapping(t *testing.T) {
 
 func TestMessageMapping(t *testing.T) {
 	dbPath := "/tmp/test_bridge_messages.db"
-	defer os.Remove(dbPath)
+	defer func() { _ = os.Remove(dbPath) }()
 
 	db, err := Open(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -132,13 +132,13 @@ func TestMessageMapping(t *testing.T) {
 
 func TestGroupMembers(t *testing.T) {
 	dbPath := "/tmp/test_bridge_groups.db"
-	defer os.Remove(dbPath)
+	defer func() { _ = os.Remove(dbPath) }()
 
 	db, err := Open(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 
@@ -188,13 +188,13 @@ func TestGroupMembers(t *testing.T) {
 
 func TestLinkViberUser(t *testing.T) {
 	dbPath := "/tmp/test_bridge_link.db"
-	defer os.Remove(dbPath)
+	defer func() { _ = os.Remove(dbPath) }()
 
 	db, err := Open(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to open database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	ctx := context.Background()
 

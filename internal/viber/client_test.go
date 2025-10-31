@@ -98,14 +98,14 @@ func TestEnsureWebhook(t *testing.T) {
 			t.Errorf("Unexpected path: %s", r.URL.Path)
 		}
 
-	var req map[string]interface{}
-	_ = json.NewDecoder(r.Body).Decode(&req)
+		var req map[string]interface{}
+		_ = json.NewDecoder(r.Body).Decode(&req)
 
-	response := map[string]interface{}{
-		"status":         0,
-		"status_message": "ok",
-	}
-	_ = json.NewEncoder(w).Encode(response)
+		response := map[string]interface{}{
+			"status":         0,
+			"status_message": "ok",
+		}
+		_ = json.NewEncoder(w).Encode(response)
 	}))
 	defer server.Close()
 
