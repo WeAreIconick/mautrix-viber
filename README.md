@@ -59,8 +59,8 @@ A comprehensive, production-ready bidirectional Matrix-Viber bridge written in G
 - ✅ **Health Check Scripts**: Monitoring and alerting support
 
 #### Developer Experience
-- ✅ **Comprehensive Tests**: 42+ tests (unit, integration, benchmarks)
-- ✅ **Example Code**: Usage examples and integration guides
+- ✅ **Comprehensive Tests**: 100+ tests (unit, integration, benchmarks, examples)
+- ✅ **Example Code**: Usage examples and integration guides with godoc examples
 - ✅ **Makefile**: Common development tasks
 - ✅ **CI/CD**: GitHub Actions workflows
 - ✅ **Documentation**: 18+ comprehensive guides
@@ -82,7 +82,7 @@ A comprehensive, production-ready bidirectional Matrix-Viber bridge written in G
 
 ### Prerequisites
 
-- Go 1.22+ (for building from source)
+- Go 1.24+ (for building from source)
 - A Viber Bot API token ([create one](https://partners.viber.com/))
 - A Matrix homeserver URL and access token
 - A publicly accessible HTTPS URL for webhooks
@@ -455,9 +455,7 @@ See [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for comprehensive trouble
 - [docs/SEQUENCE_DIAGRAMS.md](docs/SEQUENCE_DIAGRAMS.md) - Message flow diagrams
 - [docs/FAQ.md](docs/FAQ.md) - Frequently asked questions
 - [docs/ROADMAP.md](docs/ROADMAP.md) - Development roadmap
-- [TESTING.md](TESTING.md) - Testing guide and test coverage
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines
-- [PRODUCTION_HARDENING.md](PRODUCTION_HARDENING.md) - Production hardening features
 
 ### Coding Standards
 
