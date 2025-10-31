@@ -3,8 +3,9 @@ package database_test
 import (
 	"context"
 	"fmt"
-	"github.com/example/mautrix-viber/internal/database"
 	"os"
+
+	"github.com/example/mautrix-viber/internal/database"
 )
 
 func ExampleOpen() {

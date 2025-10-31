@@ -64,10 +64,10 @@ func (sm *SearchManager) SearchBySender(ctx context.Context, senderID string, li
 	}
 
 	// Validate limit (unused but kept for API consistency)
-	_ = limit
 	if limit <= 0 || limit > 100 {
 		limit = 50
 	}
+	_ = limit // Suppress unused variable warning
 
 	// This feature requires message content storage in database
 	// Query would be: SELECT * FROM messages WHERE sender_id = ? LIMIT ?
