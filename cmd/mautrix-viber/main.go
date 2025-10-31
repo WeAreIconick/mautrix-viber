@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	_ "net/http/pprof" // Register pprof handlers when enabled
 	"os"
 	"os/signal"
 	"syscall"
@@ -21,7 +22,6 @@ import (
 	"github.com/example/mautrix-viber/internal/middleware"
 	"github.com/example/mautrix-viber/internal/viber"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	_ "net/http/pprof" // Register pprof handlers when enabled
 )
 
 func main() {
