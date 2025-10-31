@@ -68,7 +68,7 @@ func (h *EventHandler) Start(ctx context.Context) error {
 
 // handleMessage handles Matrix message events.
 // Uses the handler's context for message callbacks to allow cancellation.
-func (h *EventHandler) handleMessage(source mautrix.EventSource, evt *event.Event) {
+func (h *EventHandler) handleMessage(ctx context.Context, evt *event.Event) {
 	if h.onMessage != nil {
 		msgEvt, ok := evt.Content.Parsed.(*event.MessageEventContent)
 		if ok {
@@ -76,34 +76,39 @@ func (h *EventHandler) handleMessage(source mautrix.EventSource, evt *event.Even
 			h.onMessage(h.ctx, msgEvt, evt.RoomID, evt.Sender)
 		}
 	}
+	_ = ctx // unused parameter
 }
 
 // handleReaction handles Matrix reaction events.
 // Viber API does not support reactions, so this is a no-op.
-func (h *EventHandler) handleReaction(source mautrix.EventSource, evt *event.Event) {
+func (h *EventHandler) handleReaction(ctx context.Context, evt *event.Event) {
 	// Reactions from Matrix cannot be forwarded to Viber as the Viber API
 	// does not support reaction/reply features
+	_, _ = ctx, evt // unused parameters
 }
 
 // handleRedaction handles Matrix redaction events.
 // Redactions (message deletions) are forwarded to Viber via HandleDeletion.
-func (h *EventHandler) handleRedaction(source mautrix.EventSource, evt *event.Event) {
+func (h *EventHandler) handleRedaction(ctx context.Context, evt *event.Event) {
 	// Redactions are handled separately via the deletion flow
 	// Matrix redactions trigger Viber message deletions
+	_, _ = ctx, evt // unused parameters
 }
 
 // handleTyping handles Matrix typing indicators.
 // Typing indicators can be synced to Viber if the API supports it.
-func (h *EventHandler) handleTyping(source mautrix.EventSource, evt *event.Event) {
+func (h *EventHandler) handleTyping(ctx context.Context, evt *event.Event) {
 	// Typing indicators require Viber API support for typing events
 	// This would use SetTyping if Viber API adds support
+	_, _ = ctx, evt // unused parameters
 }
 
 // handleReceipt handles Matrix read receipts.
 // Read receipts can be synced to Viber if the API supports it.
-func (h *EventHandler) handleReceipt(source mautrix.EventSource, evt *event.Event) {
+func (h *EventHandler) handleReceipt(ctx context.Context, evt *event.Event) {
 	// Read receipts require Viber API support for read receipt events
 	// This would use SendReadReceipt if Viber API adds support
+	_, _ = ctx, evt // unused parameters
 }
 
 // FormatMatrixMessage formats a Matrix message for Viber, handling rich content.

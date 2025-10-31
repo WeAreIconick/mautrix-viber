@@ -48,22 +48,23 @@ func TestDatabaseConsistency(t *testing.T) {
 	viberChatID := "test_chat_123"
 
 	// Create user
-	if err := db.UpsertViberUser(viberID, "Test User"); err != nil {
+	ctx := context.Background()
+	if err := db.UpsertViberUser(ctx, viberID, "Test User"); err != nil {
 		t.Fatalf("Failed to create user: %v", err)
 	}
 
 	// Create room mapping
-	if err := db.CreateRoomMapping(viberChatID, matrixRoomID); err != nil {
+	if err := db.CreateRoomMapping(ctx, viberChatID, matrixRoomID); err != nil {
 		t.Fatalf("Failed to create room mapping: %v", err)
 	}
 
 	// Verify consistency
-	user, err := db.GetViberUser(viberID)
+	user, err := db.GetViberUser(ctx, viberID)
 	if err != nil || user == nil {
 		t.Fatal("User not found after creation")
 	}
 
-	retrievedRoomID, err := db.GetMatrixRoomID(viberChatID)
+	retrievedRoomID, err := db.GetMatrixRoomID(ctx, viberChatID)
 	if err != nil || retrievedRoomID != matrixRoomID {
 		t.Fatalf("Room mapping inconsistent: expected %s, got %s", matrixRoomID, retrievedRoomID)
 	}
@@ -79,11 +80,12 @@ func TestConcurrentOperations(t *testing.T) {
 	defer db.Close()
 
 	// Simulate concurrent writes
+	ctx := context.Background()
 	done := make(chan bool, 10)
 	for i := 0; i < 10; i++ {
 		go func(id int) {
 			viberID := "test_user_" + string(rune(id))
-			db.UpsertViberUser(viberID, "Test User")
+			db.UpsertViberUser(ctx, viberID, "Test User")
 			done <- true
 		}(i)
 	}
@@ -96,7 +98,7 @@ func TestConcurrentOperations(t *testing.T) {
 	// Verify all users were created
 	for i := 0; i < 10; i++ {
 		viberID := "test_user_" + string(rune(i))
-		user, err := db.GetViberUser(viberID)
+		user, err := db.GetViberUser(ctx, viberID)
 		if err != nil || user == nil {
 			t.Errorf("User %s not found after concurrent creation", viberID)
 		}
@@ -128,24 +130,25 @@ func TestMessageDeduplication(t *testing.T) {
 	matrixEventID1 := "$event_1"
 	matrixEventID2 := "$event_2"
 	chatID := "chat_123"
+	ctx := context.Background()
 
 	// Create room mapping first
-	if err := db.CreateRoomMapping(chatID, "!room:example.com"); err != nil {
+	if err := db.CreateRoomMapping(ctx, chatID, "!room:example.com"); err != nil {
 		t.Fatalf("Failed to create room mapping: %v", err)
 	}
 
 	// Store first mapping
-	if err := db.StoreMessageMapping(viberMsgID, matrixEventID1, chatID); err != nil {
+	if err := db.StoreMessageMapping(ctx, viberMsgID, matrixEventID1, chatID); err != nil {
 		t.Fatalf("Failed to store first mapping: %v", err)
 	}
 
 	// Try to store duplicate (should update, not fail)
-	if err := db.StoreMessageMapping(viberMsgID, matrixEventID2, chatID); err != nil {
+	if err := db.StoreMessageMapping(ctx, viberMsgID, matrixEventID2, chatID); err != nil {
 		t.Fatalf("Failed to update mapping: %v", err)
 	}
 
 	// Verify latest mapping is stored
-	retrieved, err := db.GetMatrixEventID(viberMsgID)
+	retrieved, err := db.GetMatrixEventID(ctx, viberMsgID)
 	if err != nil {
 		t.Fatalf("Failed to retrieve mapping: %v", err)
 	}

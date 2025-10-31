@@ -34,7 +34,7 @@ A comprehensive, production-ready bidirectional Matrix-Viber bridge written in G
 - ✅ **Exponential Backoff**: Retry logic with jitter
 - ✅ **Structured Logging**: JSON logging via `log/slog` with levels
 - ✅ **Prometheus Metrics**: Comprehensive metrics at `/metrics`
-- ✅ **OpenTelemetry Tracing**: Request flow tracing with Jaeger support
+- ✅ **OpenTelemetry Tracing**: Request flow tracing with OTLP support (Jaeger, Zipkin, and more)
 - ✅ **Hot Config Reload**: SIGHUP-based configuration reload without restart
 - ✅ **Graceful Shutdown**: 15s timeout with cleanup
 - ✅ **Health Checks**: `/healthz`, `/readyz` endpoints

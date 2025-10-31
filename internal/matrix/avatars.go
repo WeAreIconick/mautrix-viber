@@ -29,19 +29,18 @@ func (am *AvatarManager) SyncAvatar(ctx context.Context, viberUserID, avatarURL 
 		return fmt.Errorf("puppeting not configured")
 	}
 	
-	ghostID := am.puppeting.GetGhostUserID(viberUserID)
+	_ = am.puppeting.GetGhostUserID(viberUserID) // For future use
 	
 	if avatarURL == "" {
 		return fmt.Errorf("avatar URL is empty")
 	}
 	
-	// Download avatar from Viber URL (if needed, or use direct URL)
-	// For now, assume avatarURL is directly usable
-	if err := am.mxClient.SetAvatarURL(ctx, ghostID, mautrix.ContentURI(avatarURL)); err != nil {
-		return fmt.Errorf("set avatar: %w", err)
-	}
-	
-	return nil
+	// Parse the URL as a Matrix ContentURI (mxc://server/media)
+	// For now, this is a placeholder - SetAvatarURL doesn't take userID parameter
+	// and requires proper puppeting setup
+	_ = avatarURL
+	_ = ctx
+	return fmt.Errorf("avatar syncing requires appservice puppeting")
 }
 
 // SyncAvatarFromViberUser syncs avatar from a Viber UserDetails object.
@@ -66,7 +65,11 @@ func (am *AvatarManager) GetGhostAvatarURL(ctx context.Context, viberUserID stri
 		return "", fmt.Errorf("get profile: %w", err)
 	}
 	
-	return profile.AvatarURL.CUString(), nil
+	var empty id.ContentURI
+	if profile.AvatarURL == empty {
+		return "", nil
+	}
+	return profile.AvatarURL.String(), nil
 }
 
 // UpdateAvatarIfChanged updates the avatar only if it's different from current.

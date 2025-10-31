@@ -31,7 +31,10 @@ type Config struct {
 }
 
 func NewClient(cfg Config) (*Client, error) {
-    mx, err := mautrix.NewClient(cfg.HomeserverURL, "", cfg.AccessToken)
+    // Extract user ID from access token or use a placeholder
+    // In production, parse from token
+    userID := id.UserID("@bridge:local")
+    mx, err := mautrix.NewClient(cfg.HomeserverURL, userID, cfg.AccessToken)
     if err != nil {
         return nil, fmt.Errorf("create matrix client: %w", err)
     }
@@ -53,7 +56,7 @@ func (c *Client) SendText(ctx context.Context, text string) error {
         metrics.RecordOperationDuration("matrix_send_text", time.Since(start))
     }()
     content := format.RenderMarkdown(text, true, true)
-    _, err := c.mxClient.SendMessageEvent(ctx, c.defaultRoomID, mautrix.EventMessage, content)
+    _, err := c.mxClient.SendMessageEvent(ctx, c.defaultRoomID, event.EventMessage, content)
     if err != nil {
         metrics.RecordError("matrix_send_failure", "client")
         return fmt.Errorf("send matrix message: %w", err)
@@ -62,7 +65,7 @@ func (c *Client) SendText(ctx context.Context, text string) error {
 }
 
 // SendImage uploads bytes to the HS and sends an m.image message.
-func (c *Client) SendImage(ctx context.Context, filename string, mimeType string, data []byte, info *mautrix.ImageInfo) error {
+func (c *Client) SendImage(ctx context.Context, filename string, mimeType string, data []byte, info *event.ImageInfo) error {
     if c.defaultRoomID == "" {
         return fmt.Errorf("default room ID not configured")
     }
@@ -77,18 +80,18 @@ func (c *Client) SendImage(ctx context.Context, filename string, mimeType string
             mimeType = "application/octet-stream"
         }
     }
-    uploadResp, err := c.mxClient.UploadToContentRepo(data, mimeType, int64(len(data)))
+    uploadResp, err := c.mxClient.UploadBytes(data, mimeType)
     if err != nil {
         metrics.RecordError("matrix_upload_failure", "client")
         return fmt.Errorf("upload image: %w", err)
     }
-    content := mautrix.MessageEventContent{
-        MsgType: mautrix.MsgImage,
+    content := &event.MessageEventContent{
+        MsgType: event.MsgImage,
         Body:    filename,
-        URL:     uploadResp.ContentURI.CUString(),
+        URL:     uploadResp.ContentURI.String(),
         Info:    info,
     }
-    _, err = c.mxClient.SendMessageEvent(ctx, id.RoomID(c.defaultRoomID), mautrix.EventMessage, content)
+    _, err = c.mxClient.SendMessageEvent(ctx, id.RoomID(c.defaultRoomID), event.EventMessage, content)
     if err != nil {
         metrics.RecordError("matrix_send_failure", "client")
         return fmt.Errorf("send image message: %w", err)
@@ -114,7 +117,7 @@ func (c *Client) EnsureGhostUser(ctx context.Context, userID id.UserID, displayN
 // Each message callback receives a context derived from the parent context for cancellation propagation.
 func (c *Client) StartMessageListener(ctx context.Context, onMessage func(ctx context.Context, evt *event.MessageEventContent, roomID id.RoomID, sender id.UserID)) error {
 	syncer := c.mxClient.Sync()
-	syncer.OnEventType(event.EventMessage, func(source mautrix.EventSource, evt *event.Event) {
+	syncer.OnEventType(event.EventMessage, func(handlerCtx context.Context, evt *event.Event) {
 		if evt == nil || evt.Content.Parsed == nil {
 			return
 		}
@@ -160,8 +163,8 @@ func (c *Client) SendTextToRoom(ctx context.Context, roomID id.RoomID, text stri
 		return fmt.Errorf("matrix client not configured")
 	}
 	
-	content := format.RenderMarkdown(text, true, true)
-	_, err := c.mxClient.SendMessageEvent(ctx, roomID, mautrix.EventMessage, content)
+    content := format.RenderMarkdown(text, true, true)
+	_, err := c.mxClient.SendMessageEvent(ctx, roomID, event.EventMessage, content)
 	if err != nil {
 		return fmt.Errorf("send matrix message: %w", err)
 	}

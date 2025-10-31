@@ -41,7 +41,7 @@ func main() {
 	}, mxClient, db)
 	
 	// Ensure webhook is registered
-	if err := viberClient.EnsureWebhook(); err != nil {
+	if err := viberClient.EnsureWebhook(context.Background()); err != nil {
 		log.Fatalf("Failed to register webhook: %v", err)
 	}
 	

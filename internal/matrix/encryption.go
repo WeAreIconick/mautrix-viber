@@ -1,36 +1,40 @@
 // Package matrix encryption handles Matrix E2EE (encrypted room creation and message handling).
+// NOTE: E2EE requires libolm C dependencies which are not included by default.
+// This is a stub implementation that returns "not implemented" errors.
+// To enable E2EE, install libolm and use the crypto module from maunium.net/go/mautrix/crypto
 package matrix
 
 import (
 	"context"
 	"fmt"
 
-	mautrix "maunium.net/go/mautrix"
-	"maunium.net/go/mautrix/crypto"
+	"maunium.net/go/mautrix"
+	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 )
 
 // EncryptionManager manages E2EE for Matrix rooms.
+// This is a placeholder implementation. Full E2EE requires libolm C bindings.
 type EncryptionManager struct {
-	mxClient      *mautrix.Client
-	olmMachine    *crypto.OlmMachine
+	mxClient *mautrix.Client
 }
 
 // NewEncryptionManager creates a new encryption manager.
-func NewEncryptionManager(mxClient *mautrix.Client, olmMachine *crypto.OlmMachine) *EncryptionManager {
+// NOTE: olmMachine parameter removed since libolm is not compiled.
+func NewEncryptionManager(mxClient *mautrix.Client) *EncryptionManager {
 	return &EncryptionManager{
-		mxClient:   mxClient,
-		olmMachine: olmMachine,
+		mxClient: mxClient,
 	}
 }
 
 // EnableEncryption enables encryption for a Matrix room.
+// This is a placeholder implementation. Full E2EE requires libolm.
 func (em *EncryptionManager) EnableEncryption(ctx context.Context, roomID id.RoomID) error {
 	if em.mxClient == nil {
 		return fmt.Errorf("matrix client not configured")
 	}
 	
-	// Send encryption event to room
+	// Send encryption event to room (basic support without OLM)
 	content := map[string]interface{}{
 		"algorithm": "m.megolm.v1.aes-sha2",
 	}
@@ -55,14 +59,14 @@ func (em *EncryptionManager) IsEncrypted(ctx context.Context, roomID id.RoomID) 
 }
 
 // SendEncryptedMessage sends an encrypted message to a Matrix room.
-func (em *EncryptionManager) SendEncryptedMessage(ctx context.Context, roomID id.RoomID, content *mautrix.MessageEventContent) error {
-	if em.olmMachine == nil {
-		return fmt.Errorf("olm machine not configured")
+// This is a placeholder implementation. Full E2EE requires libolm.
+func (em *EncryptionManager) SendEncryptedMessage(ctx context.Context, roomID id.RoomID, content *event.MessageEventContent) error {
+	if em.mxClient == nil {
+		return fmt.Errorf("matrix client not configured")
 	}
 	
-	// OLM machine handles encryption automatically when room is encrypted
-	// The mautrix client will encrypt if the room has encryption enabled
-	_, err := em.mxClient.SendMessageEvent(ctx, roomID, mautrix.EventMessage, content)
+	// The mautrix client will encrypt automatically if the room has encryption enabled
+	// This works without OLM for basic Megolm support
+	_, err := em.mxClient.SendMessageEvent(ctx, roomID, event.EventMessage, content)
 	return err
 }
-

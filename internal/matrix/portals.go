@@ -71,7 +71,9 @@ func (p *Portals) UpdateRoomMetadata(ctx context.Context, roomID id.RoomID, name
 	}
 
 	if avatarURL != "" {
-		if err := p.mxClient.SetRoomAvatar(ctx, roomID, mautrix.ContentURI(avatarURL)); err != nil {
+		// Parse avatar URL as ContentURI
+		avatarURI := id.MustParseContentURI(avatarURL)
+		if err := p.mxClient.SetRoomAvatar(ctx, roomID, avatarURI); err != nil {
 			return fmt.Errorf("set room avatar: %w", err)
 		}
 	}
