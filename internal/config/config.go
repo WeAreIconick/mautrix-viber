@@ -44,6 +44,13 @@ func FromEnv() Config {
 	cfg := Config{}
 	cfg.APIToken = os.Getenv("VIBER_API_TOKEN")
 	cfg.WebhookURL = os.Getenv("VIBER_WEBHOOK_URL")
+	if cfg.WebhookURL == "" {
+		if staticURL := os.Getenv("RAILWAY_STATIC_URL"); staticURL != "" {
+			cfg.WebhookURL = strings.TrimSuffix(staticURL, "/") + "/viber/webhook"
+		} else if serviceURL := os.Getenv("RAILWAY_URL"); serviceURL != "" {
+			cfg.WebhookURL = strings.TrimSuffix(serviceURL, "/") + "/viber/webhook"
+		}
+	}
 	cfg.ViberAPIBaseURL = os.Getenv("VIBER_API_BASE_URL")
 	if cfg.ViberAPIBaseURL == "" {
 		cfg.ViberAPIBaseURL = "https://chatapi.viber.com"
@@ -51,6 +58,14 @@ func FromEnv() Config {
 	cfg.ListenAddress = os.Getenv("LISTEN_ADDRESS")
 	if cfg.ListenAddress == "" {
 		cfg.ListenAddress = ":8080"
+	}
+	// Railway and other PaaS platforms provide a PORT env var at runtime.
+	// When LISTEN_ADDRESS is not explicitly set, prefer PORT to ensure the
+	// server binds to the platform-assigned port.
+	if port := os.Getenv("PORT"); port != "" && os.Getenv("LISTEN_ADDRESS") == "" {
+		if _, err := strconv.Atoi(port); err == nil {
+			cfg.ListenAddress = ":" + port
+		}
 	}
 	cfg.MatrixHomeserverURL = os.Getenv("MATRIX_HOMESERVER_URL")
 	cfg.MatrixAccessToken = os.Getenv("MATRIX_ACCESS_TOKEN")

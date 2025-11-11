@@ -138,6 +138,26 @@ export MATRIX_DEFAULT_ROOM_ID="!roomid:example.com"
 ./bin/mautrix-viber
 ```
 
+### Option 3: Railway (PaaS)
+
+The repository ships with a `railway.json` manifest so you can deploy with a single command after configuring the service.
+
+1. Install the [Railway CLI](https://docs.railway.com/cli/installation) and log in: `railway login`.
+2. Inside the repository directory, create/link a project and service: `railway init` (or `railway link` if the project already exists).
+3. Attach a persistent volume for the SQLite database (via the Railway dashboard or `railway volume create data --mountPath /data`).
+4. Set required secrets:
+   ```bash
+   railway variables set \
+     VIBER_API_TOKEN=your-token \
+     MATRIX_HOMESERVER_URL=https://matrix.example.com \
+     MATRIX_ACCESS_TOKEN=your-token \
+     MATRIX_DEFAULT_ROOM_ID=!roomid:example.com
+   ```
+   Optionally set `VIBER_WEBHOOK_URL` (see note below) and any other configuration variables you use locally.
+5. Deploy: `railway up`.
+
+On deployment Railway injects its assigned HTTP endpoint through `RAILWAY_STATIC_URL`/`RAILWAY_URL`; when `VIBER_WEBHOOK_URL` is unset the bridge automatically derives `https://<railway-domain>/viber/webhook` for webhook registration. The server also listens on the platform-provided `PORT` automatically.
+
 ### Testing Locally
 
 For local development, use `ngrok` to expose the bridge:
@@ -162,7 +182,7 @@ ngrok http 8080
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `VIBER_API_TOKEN` | Viber Bot API token | ✅ Yes |
-| `VIBER_WEBHOOK_URL` | Public HTTPS URL for Viber webhooks | ✅ Yes |
+| `VIBER_WEBHOOK_URL` | Public HTTPS URL for Viber webhooks (auto-derived from `RAILWAY_STATIC_URL`/`RAILWAY_URL` on Railway if unset) | ✅ Yes\* |
 | `VIBER_API_BASE_URL` | Viber API base URL (default: `https://chatapi.viber.com`) | No |
 | `LISTEN_ADDRESS` | HTTP server listen address (default: `:8080`) | No |
 | `MATRIX_HOMESERVER_URL` | Matrix homeserver base URL | Yes (if bridging) |
@@ -176,6 +196,8 @@ ngrok http 8080
 | `CACHE_TTL` | Cache TTL in minutes (default: `5`) | No |
 | `ENABLE_PPROF` | Enable pprof endpoints for debugging (default: `false`) | No |
 | `ENABLE_REQUEST_LOGGING` | Enable request/response body logging for debugging (default: `false`) | No |
+
+\* Required unless a platform-provided domain (`RAILWAY_STATIC_URL`/`RAILWAY_URL`) is available, in which case the bridge infers the webhook URL automatically.
 
 ### YAML Configuration File
 
