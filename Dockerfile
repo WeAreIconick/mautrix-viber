@@ -25,8 +25,8 @@ WORKDIR /app
 # Copy binary from builder
 COPY --from=builder /build/mautrix-viber .
 
-# Create data directory for SQLite
-RUN mkdir -p /data && chmod 755 /data
+# Create data directories for SQLite (support default ./data path and volume mount at /data)
+RUN mkdir -p /data /app/data && chmod 755 /data /app/data
 
 # Expose default port
 EXPOSE 8080
